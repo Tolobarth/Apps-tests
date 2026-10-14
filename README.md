@@ -147,3 +147,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - "Back up everything" writes a `.zip` (`notes.json` + `attachments/…`) with photos, drawings and recordings; "Restore" accepts `.zip` and older `.json` files, never uses zip entry names as paths, and caps sizes.
 - Automatic backup: pick a folder through the system picker; a daily zip is written there (WorkManager) and the newest 7 are kept. "Back up now" shows the result.
 - The folder picker and writing into it are not covered by unit tests (no Storage Access Framework in the test environment); try it on a device.
+
+### v0.13 — Import and Markdown export
+- Settings → Backup → "Import from other apps": Google Keep (Takeout `.zip` or loose note `.json`: text, checklists, colour, pin, archive, dates, photos, audio; Keep's trash is skipped) and `.txt`/`.md` files (a `# Heading` is the title, otherwise the file name; all-checkbox files become checklists with sub-items). Re-importing adds nothing twice.
+- "Export as Markdown": a `.zip` with one `.md` per note and `attachments/`.
+- ColorNote's own backup is a proprietary encrypted format and is not supported; use its plain-text export.
