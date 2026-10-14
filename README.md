@@ -125,3 +125,8 @@ Share or Open note. Search, the colour filter and the Notes/Archive tabs apply t
 note (one that starts with an address) is still what "+ → Link" and "Share → HueNotes" create. The list is built on the fly from
 the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep brackets that belong to them
 (`…/Foo_(bar)`) and drop punctuation that doesn't (`see https://a.com.`).
+
+### v0.8 — Android 16 target
+- compileSdk/targetSdk 36 (AGP 8.13.2, Kotlin 2.2.21); every screen is edge-to-edge with system-bar/keyboard insets.
+- Removed the unused `SCHEDULE_EXACT_ALARM` permission; reminders use `setAndAllowWhileIdle`, and are re-armed after an app update.
+- Not yet tested on a real Android 16 device (no emulator in the build container).
