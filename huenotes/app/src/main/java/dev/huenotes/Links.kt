@@ -23,9 +23,41 @@ object Links {
     private val TITLE_TAG = Regex("""<title[^>]*>(.*?)</title>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val exec = Executors.newSingleThreadExecutor()
 
+    private val URL_FINDER = Regex("""(?:https?://|www\.)[^\s<>"']+""", RegexOption.IGNORE_CASE)
+    private val LENIENT_HOST = Regex("""^https?://[^/\s?#]+\.[^/\s?#]+""", RegexOption.IGNORE_CASE)
+
+    /** Strips what usually trails a link in prose: full stops, commas, and a closing bracket that has no opening partner. */
+    internal fun clean(raw: String): String {
+        var s = raw
+        while (s.isNotEmpty()) {
+            val last = s.last()
+            val unpaired = when (last) {
+                ')' -> s.count { it == ')' } > s.count { it == '(' }
+                ']' -> s.count { it == ']' } > s.count { it == '[' }
+                '}' -> s.count { it == '}' } > s.count { it == '{' }
+                '>' -> true
+                '.', ',', ';', ':', '!', '?', '\'', '"' -> true
+                else -> false
+            }
+            if (!unpaired) break
+            s = s.dropLast(1)
+        }
+        return s
+    }
+
     /** The first web address inside [text], without trailing punctuation such as the full stop ending a sentence. */
-    fun firstUrl(text: String): String? =
-        URL_ANYWHERE.find(text)?.value?.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '}', '>')?.takeIf { it.length > 8 }
+    fun firstUrl(text: String): String? = URL_ANYWHERE.find(text)?.value?.let { clean(it) }?.takeIf { it.length > 8 }
+
+    /**
+     * Every web address in [text], in order, without repeats. Addresses starting with "www." are given https://, so each
+     * result can be opened as is. Used to gather the links of all notes into one list.
+     */
+    fun allUrls(text: String): List<String> = URL_FINDER.findAll(text).mapNotNull { m ->
+        val c = clean(m.value)
+        val withScheme = if (c.startsWith("www.", ignoreCase = true)) "https://$c" else c
+        // Strict check first; real-world addresses with | or [ ] in them still count if the host looks right.
+        withScheme.takeIf { normalize(it) != null || LENIENT_HOST.containsMatchIn(it) }
+    }.distinct().toList()
 
     /** Turns what a person typed or pasted into a usable address, or null when it isn't one. "example.com/a" gets https://. */
     fun normalize(input: String): String? {

@@ -115,3 +115,13 @@ a top-level row after its group, Backspace on an empty sub-item moves it out and
 sub-items as top-level rows. Cards show sub-items indented and "3 of 7 done"; the editor line reads "7 items · 3 done"; shared
 text keeps the indentation. Stored as plain text (two spaces before a sub-item), so old lists, backups and sync are unchanged.
 The rules live in `Checklist.kt` and are covered by `ChecklistTest`; `SubItemUiTest` drives the real editor.
+
+### v0.7
+
+The **Links** chip is now a links section: every web address found in any note (text, checklist items, titles; `https://…` and
+`www.…`) is listed automatically, nothing to add by hand, and it stays in step as notes change. The chip shows the count
+("Links · 12"). Each row shows the site (or a link note's title), the address and "in <note>"; tap to open, ⋮ for Open, Copy,
+Share or Open note. Search, the colour filter and the Notes/Archive tabs apply to it; trashed notes are left out. A link
+note (one that starts with an address) is still what "+ → Link" and "Share → HueNotes" create. The list is built on the fly from
+the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep brackets that belong to them
+(`…/Foo_(bar)`) and drop punctuation that doesn't (`see https://a.com.`).

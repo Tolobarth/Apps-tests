@@ -47,6 +47,7 @@ class ScreenshotTest {
         s.save(Note(title = "", body = "Call dentist tomorrow morning", color = Note.COLORS[1]))
         s.save(Note(title = "Gift ideas", body = "Ceramic mug set\nPlant for Mum\nConcert tickets", color = Note.COLORS[6], reminderAt = tomorrow + 86_400_000))
         s.save(Note(title = "", body = "https://www.nytimes.com/2026/10/14/travel/lisbon.html\nCome back to this on Sunday", color = Note.COLORS[7]))
+        s.save(Note(title = "Lisbon trip", body = "Hotel: https://www.booking.com/hotel/pt/lisbon.html\nTram 28 map: www.lisboa.pt/tram28\nDon't forget the pastéis!", color = Note.COLORS[2]))
         s.save(Note(title = "Design inspiration", body = "https://dribbble.com/shots", color = Note.COLORS[4]))
         File(app.filesDir, "attachments").deleteRecursively()
         fun uidOf(title: String) = s.list(false).first { it.title == title }.uid

@@ -169,7 +169,13 @@
     <string name="add_link">Enlace</string>
     <string name="filter_links">Enlaces</string>
     <string name="empty_links_title">No hay enlaces guardados</string>
-    <string name="empty_links_body">Usa + → Enlace, o comparte un enlace desde tu navegador con HueNotes.</string>
+    <string name="empty_links_body">Los enlaces de tus notas aparecen aquí automáticamente. Añade uno con + → Enlace o compártelo desde tu navegador.</string>
+    <string name="filter_links_count">Enlaces · %1$d</string>
+    <string name="link_copied">Enlace copiado</string>
+    <string name="link_action_copy">Copiar enlace</string>
+    <string name="link_action_share">Compartir enlace</string>
+    <string name="link_action_open_note">Abrir nota</string>
+    <string name="link_in_note">en %1$s</string>
     <string name="link_dialog_title">Guardar un enlace</string>
     <string name="link_hint_url">Enlace (https://…)</string>
     <string name="link_hint_title">Título (opcional)</string>

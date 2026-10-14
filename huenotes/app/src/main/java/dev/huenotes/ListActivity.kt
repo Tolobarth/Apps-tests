@@ -25,6 +25,8 @@ import com.google.android.material.snackbar.Snackbar
 class ListActivity : GatedActivity() {
     private lateinit var store: NoteStore
     private lateinit var adapter: NoteAdapter
+    private lateinit var linkAdapter: LinkAdapter
+    private lateinit var recycler: RecyclerView
     private lateinit var layoutManager: StaggeredGridLayoutManager
     private lateinit var search: EditText
     private lateinit var filterRow: LinearLayout
@@ -42,13 +44,14 @@ class ListActivity : GatedActivity() {
         adapter = NoteAdapter({ openEditor(it.id) }, { n, v -> showNoteMenu(n, v) })
         adapter.storage = store.storage
         layoutManager = StaggeredGridLayoutManager(if (Prefs.grid(this)) 2 else 1, StaggeredGridLayoutManager.VERTICAL)
-        val recycler = findViewById<RecyclerView>(R.id.recycler)
+        linkAdapter = LinkAdapter({ Links.open(this, it.url) }, { e, v -> showLinkMenu(e, v) })
+        recycler = findViewById(R.id.recycler)
         recycler.layoutManager = layoutManager
         recycler.adapter = adapter
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder) = false
             override fun getSwipeDirs(rv: RecyclerView, vh: RecyclerView.ViewHolder) =
-                if (adapter.noteAt(vh.bindingAdapterPosition) == null) 0 else super.getSwipeDirs(rv, vh)
+                if (linksOnly || adapter.noteAt(vh.bindingAdapterPosition) == null) 0 else super.getSwipeDirs(rv, vh)
             override fun onSwiped(vh: RecyclerView.ViewHolder, dir: Int) {
                 adapter.noteAt(vh.bindingAdapterPosition)?.let { archive(it, !showArchive) } ?: refresh()
             }
@@ -141,25 +144,38 @@ class ListActivity : GatedActivity() {
         findViewById<TextView>(R.id.screenTitle).setText(if (showArchive) R.string.nav_archive else R.string.nav_notes)
         findViewById<View>(R.id.fab).visibility = if (showArchive) View.GONE else View.VISIBLE
         if (showArchive && dialOpen) setDial(false, animate = false)
-        layoutManager.spanCount = if (Prefs.grid(this)) 2 else 1
-        val all = store.list(showArchive, search.text.toString())
-        val byColour = colorFilter?.let { f -> all.filter { it.color == f } } ?: all
-        val shown = Sorter.sort(if (linksOnly) byColour.filter { Links.isLinkNote(it) } else byColour, Prefs.sort(this))
-        adapter.submit(shown, groupPinned = !showArchive,
-            pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others),
-            attachments = store.attachmentsByNote())
-
-        findViewById<View>(R.id.empty).visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
+        layoutManager.spanCount = if (Prefs.grid(this) && !linksOnly) 2 else 1
+        // The links section is built from all notes of this tab, so every link appears by itself.
+        val everyNote = Sorter.sort(store.list(showArchive), Prefs.sort(this))
+        val allLinks = LinkIndex.entries(everyNote)
         val searching = search.text.isNotBlank() || colorFilter != null
-        val noLinks = linksOnly && !searching
+        val visibleCount: Int
+        if (linksOnly) {
+            val rows = LinkIndex.filter(allLinks.filter { colorFilter == null || it.note.color == colorFilter }, search.text.toString())
+            if (recycler.adapter !== linkAdapter) recycler.adapter = linkAdapter
+            linkAdapter.entries = rows
+            visibleCount = rows.size
+        } else {
+            val all = store.list(showArchive, search.text.toString())
+            val byColour = colorFilter?.let { f -> all.filter { it.color == f } } ?: all
+            val shown = Sorter.sort(byColour, Prefs.sort(this))
+            if (recycler.adapter !== adapter) recycler.adapter = adapter
+            adapter.submit(shown, groupPinned = !showArchive,
+                pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others),
+                attachments = store.attachmentsByNote())
+            visibleCount = shown.size
+        }
+
+        findViewById<View>(R.id.empty).visibility = if (visibleCount == 0) View.VISIBLE else View.GONE
+        val noLinksAtAll = linksOnly && allLinks.isEmpty()
         findViewById<TextView>(R.id.emptyTitle).setText(
-            if (noLinks) R.string.empty_links_title else if (searching) R.string.empty_search_title else if (showArchive) R.string.empty_archive_title else R.string.empty_notes_title)
+            if (noLinksAtAll) R.string.empty_links_title else if (searching) R.string.empty_search_title else if (showArchive) R.string.empty_archive_title else R.string.empty_notes_title)
         findViewById<TextView>(R.id.emptyBody).setText(
-            if (noLinks) R.string.empty_links_body else if (searching) R.string.empty_search_body else if (showArchive) R.string.empty_archive_body else R.string.empty_notes_body)
+            if (noLinksAtAll) R.string.empty_links_body else if (searching) R.string.empty_search_body else if (showArchive) R.string.empty_archive_body else R.string.empty_notes_body)
 
         filterRow.removeAllViews()
         filterRow.addView(Chip(this).apply {
-            setText(R.string.filter_links); isCheckable = true; isChecked = linksOnly
+            text = getString(R.string.filter_links_count, allLinks.size); isCheckable = true; isChecked = linksOnly
             setChipIconResource(R.drawable.ic_link); isChipIconVisible = true; isCheckedIconVisible = false
             setOnClickListener { linksOnly = !linksOnly; refresh() }
         })
@@ -170,6 +186,27 @@ class ListActivity : GatedActivity() {
             })
         }
     }
+
+    // ---- the links section -----------------------------------------------------------------------
+
+    private fun showLinkMenu(e: LinkEntry, anchor: View) {
+        val pm = PopupMenu(this, anchor)
+        pm.menu.add(0, 1, 0, R.string.link_open); pm.menu.add(0, 2, 1, R.string.link_action_copy)
+        pm.menu.add(0, 3, 2, R.string.link_action_share); pm.menu.add(0, 4, 3, R.string.link_action_open_note)
+        pm.setOnMenuItemClickListener {
+            when (it.itemId) { 1 -> Links.open(this, e.url); 2 -> copyLink(e.url); 3 -> shareLink(e.url); 4 -> openEditor(e.note.id) }
+            true
+        }
+        pm.show()
+    }
+
+    internal fun copyLink(url: String) {
+        getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("link", url))
+        Snackbar.make(findViewById(R.id.mainRoot), R.string.link_copied, Snackbar.LENGTH_SHORT).setAnchorView(nav).show()
+    }
+
+    internal fun shareLink(url: String) = startActivity(Intent.createChooser(
+        Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url), getString(R.string.share_chooser)))
 
     // ---- actions with Undo ---------------------------------------------------------------------
 
