@@ -9,6 +9,10 @@ data class Note(
     val archived: Boolean = false,
     val reminderAt: Long = 0,
     val modifiedAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = System.currentTimeMillis(),
+    val pinned: Boolean = false,
+    /** 0 = not in the trash, otherwise when it was moved there. */
+    val deletedAt: Long = 0,
 ) {
     val isEmpty get() = title.isBlank() && body.isBlank()
 

@@ -5,41 +5,94 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StrikethroughSpan
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.google.android.material.card.MaterialCardView
 import java.text.DateFormat
 import java.util.Date
 
-class NoteAdapter(private val onClick: (Note) -> Unit) : RecyclerView.Adapter<NoteAdapter.VH>() {
-    var notes: List<Note> = emptyList()
-        set(v) { field = v; notifyDataSetChanged() }
+class NoteAdapter(
+    private val onClick: (Note) -> Unit,
+    private val onLong: (Note, View) -> Unit = { _, _ -> },
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    sealed interface Row {
+        data class Header(val text: String) : Row
+        data class Item(val note: Note) : Row
+    }
+
+    private var rows: List<Row> = emptyList()
     var showTimeOnly = false
 
-    class VH(v: View) : RecyclerView.ViewHolder(v) {
+    /** With [groupPinned], pinned notes get a "Pinned" header and the rest an "Others" header. */
+    fun submit(notes: List<Note>, groupPinned: Boolean = false, pinnedLabel: String = "", othersLabel: String = "") {
+        val out = ArrayList<Row>()
+        val pinned = if (groupPinned) notes.filter { it.pinned } else emptyList()
+        val rest = if (groupPinned) notes.filterNot { it.pinned } else notes
+        if (pinned.isNotEmpty()) {
+            out += Row.Header(pinnedLabel); pinned.forEach { out += Row.Item(it) }
+            if (rest.isNotEmpty()) out += Row.Header(othersLabel)
+        }
+        rest.forEach { out += Row.Item(it) }
+        rows = out
+        notifyDataSetChanged()
+    }
+
+    fun noteAt(pos: Int): Note? = (rows.getOrNull(pos) as? Row.Item)?.note
+
+    class NoteVH(v: View) : RecyclerView.ViewHolder(v) {
         val card: MaterialCardView = v.findViewById(R.id.card)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
+        val progress: TextView = v.findViewById(R.id.progress)
         val reminder: TextView = v.findViewById(R.id.reminder)
     }
 
-    override fun onCreateViewHolder(p: ViewGroup, t: Int) = VH(LayoutInflater.from(p.context).inflate(R.layout.item_note, p, false))
-    override fun getItemCount() = notes.size
+    class HeaderVH(v: View) : RecyclerView.ViewHolder(v) { val text: TextView = v as TextView }
 
-    override fun onBindViewHolder(h: VH, i: Int) {
-        val n = notes[i]; val c = h.itemView.context
+    override fun getItemViewType(position: Int) = if (rows[position] is Row.Header) 0 else 1
+    override fun getItemCount() = rows.size
+
+    override fun onCreateViewHolder(p: ViewGroup, t: Int): RecyclerView.ViewHolder {
+        val inf = LayoutInflater.from(p.context)
+        return if (t == 0) HeaderVH(inf.inflate(R.layout.item_header, p, false)) else NoteVH(inf.inflate(R.layout.item_note, p, false))
+    }
+
+    override fun onBindViewHolder(h: RecyclerView.ViewHolder, i: Int) {
+        when (val row = rows[i]) {
+            is Row.Header -> {
+                (h as HeaderVH).text.text = row.text.uppercase()
+                (h.itemView.layoutParams as? StaggeredGridLayoutManager.LayoutParams)?.isFullSpan = true
+            }
+            is Row.Item -> bindNote(h as NoteVH, row.note)
+        }
+    }
+
+    private fun bindNote(h: NoteVH, n: Note) {
+        val c = h.itemView.context
+        val s = Prefs.fontScale(c)
+        h.title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f * s)
+        h.body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f * s)
         h.card.setCardBackgroundColor(Palette.surface(c, n.color))
         h.card.setOnClickListener { onClick(n) }
-        h.title.text = n.title
+        h.card.setOnLongClickListener { onLong(n, h.card); true }
+        h.title.text = if (n.pinned && n.title.isNotBlank()) "📌 ${n.title}" else n.title
         h.title.visibility = if (n.title.isBlank()) View.GONE else View.VISIBLE
-        val preview = if (n.checklist) checklistPreview(c, n.body) else n.body.trim()
+        val items = if (n.checklist) Checklist.parse(n.body) else emptyList()
+        val preview = if (n.checklist) checklistPreview(c, items) else n.body.trim()
         h.body.text = preview
         h.body.visibility = if (preview.isEmpty()) View.GONE else View.VISIBLE
-        if (n.title.isBlank() && preview.isEmpty()) { h.title.text = "(empty)"; h.title.visibility = View.VISIBLE }
+        if (n.title.isBlank() && preview.isEmpty()) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
+        if (items.isNotEmpty()) {
+            h.progress.text = c.getString(R.string.checklist_progress, items.count { it.done }, items.size)
+            h.progress.visibility = View.VISIBLE
+        } else h.progress.visibility = View.GONE
         if (n.reminderAt > 0) {
             val d = Date(n.reminderAt)
             h.reminder.text = if (showTimeOnly) DateFormat.getTimeInstance(DateFormat.SHORT).format(d)
@@ -48,10 +101,10 @@ class NoteAdapter(private val onClick: (Note) -> Unit) : RecyclerView.Adapter<No
         } else h.reminder.visibility = View.GONE
     }
 
-    private fun checklistPreview(c: android.content.Context, body: String): CharSequence {
+    private fun checklistPreview(c: android.content.Context, items: List<Checklist.Item>): CharSequence {
         val dim = ContextCompat.getColor(c, R.color.on_surface_variant)
         val sb = SpannableStringBuilder()
-        Checklist.parse(body).take(8).forEachIndexed { idx, item ->
+        items.take(8).forEachIndexed { idx, item ->
             if (idx > 0) sb.append('\n')
             val start = sb.length
             sb.append(if (item.done) "☑  " else "☐  ").append(item.text)

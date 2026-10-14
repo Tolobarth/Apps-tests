@@ -26,14 +26,19 @@ object Reminders {
     }
 
     fun cancel(c: Context, id: Long) = c.getSystemService(AlarmManager::class.java).cancel(pending(c, id))
+
+    /** Arms the alarm only for live (not archived, not trashed) notes with a future reminder. */
+    fun sync(c: Context, n: Note) { if (n.archived || n.deletedAt > 0) cancel(c, n.id) else schedule(c, n) }
 }
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         val note = NoteStore(c).get(i.getLongExtra("id", 0)) ?: return
+        if (note.archived || note.deletedAt > 0) return
+        val lc = Loc.ctx(c)
         val locked = Lock.isSet(c)
         val nm = c.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(Reminders.CHANNEL, "Reminders", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(Reminders.CHANNEL, lc.getString(R.string.notif_channel), NotificationManager.IMPORTANCE_DEFAULT))
         val open = PendingIntent.getActivity(
             c, note.id.toInt(), Intent(c, EditorActivity::class.java).putExtra("id", note.id),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -41,8 +46,8 @@ class ReminderReceiver : BroadcastReceiver() {
         val b = if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(c, Reminders.CHANNEL)
         else android.app.Notification.Builder(c)
         nm.notify(note.id.toInt(), b.setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle(if (locked) "Reminder" else note.title.ifBlank { "Note" })
-            .setContentText(if (locked) "Unlock HueNotes to view" else note.body.lines().firstOrNull().orEmpty())
+            .setContentTitle(if (locked) lc.getString(R.string.notif_title_locked) else Sorter.displayTitle(note).ifBlank { lc.getString(R.string.notif_note) })
+            .setContentText(if (locked) lc.getString(R.string.notif_text_locked) else note.body.lines().firstOrNull().orEmpty())
             .setContentIntent(open).setAutoCancel(true).build())
     }
 }

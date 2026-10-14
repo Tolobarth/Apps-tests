@@ -21,12 +21,13 @@ class DayActivity : GatedActivity() {
         store = NoteStore(this)
         setContentView(R.layout.activity_day)
         findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
-        adapter = NoteAdapter { startActivity(Intent(this, EditorActivity::class.java).putExtra("id", it.id)) }
+        adapter = NoteAdapter({ startActivity(Intent(this, EditorActivity::class.java).putExtra("id", it.id)) })
         adapter.showTimeOnly = true
         findViewById<RecyclerView>(R.id.recycler).apply { layoutManager = LinearLayoutManager(context); this.adapter = this@DayActivity.adapter }
         header = findViewById(R.id.dayHeader)
         findViewById<CalendarView>(R.id.calendar).apply {
             date = day.timeInMillis
+            if (Prefs.firstDay(this@DayActivity) != 0) firstDayOfWeek = Prefs.firstDay(this@DayActivity)
             setOnDateChangeListener { _, y, m, d -> day.set(y, m, d); refresh() }
         }
     }
@@ -39,8 +40,9 @@ class DayActivity : GatedActivity() {
         }
         val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
         val notes = store.reminderBetween(start.timeInMillis, end.timeInMillis)
-        adapter.notes = notes
-        header.text = DateFormat.getDateInstance(DateFormat.FULL).format(start.time) +
-            if (notes.isEmpty()) "  ·  nothing scheduled" else "  ·  ${notes.size} reminder" + if (notes.size > 1) "s" else ""
+        adapter.submit(notes)
+        val date = DateFormat.getDateInstance(DateFormat.FULL).format(start.time)
+        header.text = if (notes.isEmpty()) "$date  ·  ${getString(R.string.day_nothing)}"
+        else "$date  ·  " + resources.getQuantityString(R.plurals.reminder_count, notes.size, notes.size)
     }
 }

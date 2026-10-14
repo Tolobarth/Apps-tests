@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:id="@+id/mainRoot" android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/bg">
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
@@ -11,11 +11,14 @@
             android:orientation="horizontal" android:gravity="center_vertical"
             android:paddingStart="20dp" android:paddingEnd="8dp" android:paddingTop="16dp">
             <TextView android:id="@+id/screenTitle" android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="Notes" android:textSize="32sp" android:textStyle="bold"
+                android:layout_weight="1" android:text="@string/nav_notes" android:textSize="32sp" android:textStyle="bold"
                 android:textColor="@color/on_surface" android:fontFamily="sans-serif-medium" />
+            <ImageButton android:id="@+id/sortButton" android:layout_width="48dp" android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_sort"
+                android:tint="@color/on_surface" android:contentDescription="@string/cd_sort" />
             <ImageButton android:id="@+id/moreButton" android:layout_width="48dp" android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_more"
-                android:tint="@color/on_surface" android:contentDescription="More" />
+                android:tint="@color/on_surface" android:contentDescription="@string/cd_more" />
         </LinearLayout>
 
         <com.google.android.material.card.MaterialCardView
@@ -28,7 +31,7 @@
                 <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_search"
                     android:tint="@color/on_surface_variant" android:importantForAccessibility="no" />
                 <EditText android:id="@+id/search" android:layout_width="match_parent" android:layout_height="match_parent"
-                    android:background="@null" android:hint="Search notes" android:singleLine="true"
+                    android:background="@null" android:hint="@string/search_hint" android:singleLine="true"
                     android:paddingStart="12dp" android:textSize="16sp" android:textColor="@color/on_surface"
                     android:textColorHint="@color/on_surface_variant" android:imeOptions="actionSearch" />
             </LinearLayout>
@@ -63,7 +66,7 @@
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fab" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="92dp"
-        android:text="New note" app:icon="@drawable/ic_add" />
+        android:text="@string/new_note" app:icon="@drawable/ic_add" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav" android:layout_width="match_parent" android:layout_height="wrap_content"

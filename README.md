@@ -64,3 +64,12 @@ cd huenotes && gradle :app:assembleDebug
 
 Also implemented: password lock (UI gate only; the database is not encrypted), calendar/Today view, two home-screen widgets. Backup: JSON export/import from the menu (import adds notes, never overwrites). Tests: `cd huenotes && gradle :app:testDebugUnitTest` (7 Robolectric tests covering store, lock, widgets-when-locked, backup). UI: Material 3 (cards, colour filter, checklist editor, dark mode, adaptive icon); previews in `docs/screens/` are rendered on the JVM by `ScreenshotTest`. Screenshots are blocked only while a password is set. Not yet done: testing on a real device or emulator (no KVM in the cloud container). Not run on a
 device or emulator yet, only compiled and statically inspected.
+
+### v0.2 additions
+
+Sort and view sheet (last edited, created, A-Z, colour, reminder; grid or list), pinned notes, swipe to archive with Undo,
+long-press quick menu, Trash (restored for 30 days, then purged), reminder presets, checklist progress, word count,
+a Settings screen (theme, language, text size, default colour/sort/start screen, typing suggestions, first day of week,
+widget opacity, password, backup, daily local snapshots) and five languages: English, Francais, Espanol, Portugues, Deutsch.
+Strings are checked by `StringsTest` so no language can miss a key. On Android 12 and older the in-app language applies to
+screens; widgets and notifications follow it too through `Loc`.

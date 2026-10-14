@@ -71,7 +71,7 @@ class CoreTest {
 
     @Test fun backupRoundTrip() {
         val src = listOf(
-            Note(title = "A", body = "[x] done\n[ ] todo", checklist = true, color = Note.COLORS[3], reminderAt = 42),
+            Note(title = "A", body = "[x] done\n[ ] todo", checklist = true, color = Note.COLORS[3], reminderAt = 42, pinned = true, createdAt = 7),
             Note(title = "B", body = "line", archived = true),
         )
         val back = Backup.fromJson(Backup.toJson(src))

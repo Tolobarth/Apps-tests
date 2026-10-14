@@ -3,7 +3,18 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <application android:label="HueNotes" android:icon="@mipmap/ic_launcher" android:theme="@style/Theme.HueNotes">
+    <application
+        android:name=".HueApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:localeConfig="@xml/locales_config"
+        android:theme="@style/Theme.HueNotes">
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data android:name="autoStoreLocales" android:value="true" />
+        </service>
         <activity android:name=".ListActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -12,11 +23,13 @@
         </activity>
         <activity android:name=".EditorActivity" android:exported="false" />
         <activity android:name=".DayActivity" android:exported="false" />
-        <receiver android:name=".RecentWidget" android:exported="false" android:label="HueNotes: recent">
+        <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".TrashActivity" android:exported="false" />
+        <receiver android:name=".RecentWidget" android:exported="false" android:label="@string/widget_label_recent">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_recent" />
         </receiver>
-        <receiver android:name=".TodayWidget" android:exported="false" android:label="HueNotes: today">
+        <receiver android:name=".TodayWidget" android:exported="false" android:label="@string/widget_label_today">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today" />
         </receiver>

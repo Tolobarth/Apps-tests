@@ -5,7 +5,7 @@
     android:orientation="vertical" android:background="@color/bg">
     <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
         android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        app:navigationIcon="@drawable/ic_back" app:title="Calendar" app:titleTextColor="@color/on_surface"
+        app:navigationIcon="@drawable/ic_back" app:title="@string/nav_calendar" app:titleTextColor="@color/on_surface"
         app:navigationIconTint="@color/on_surface" />
     <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_margin="12dp" app:cardCornerRadius="24dp" app:cardElevation="0dp"

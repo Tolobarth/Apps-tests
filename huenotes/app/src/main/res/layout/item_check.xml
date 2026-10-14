@@ -7,10 +7,10 @@
         android:button="@drawable/check_selector" android:padding="8dp" />
     <EditText android:id="@+id/text" android:layout_width="0dp" android:layout_weight="1"
         android:layout_height="wrap_content" android:background="@null" android:textSize="17sp"
-        android:textColor="@color/note_text" android:hint="List item" android:textColorHint="@color/note_text_variant"
+        android:textColor="@color/note_text" android:hint="@string/hint_item" android:textColorHint="@color/note_text_variant"
         android:inputType="textCapSentences" android:imeOptions="actionNext" android:singleLine="true"
         android:paddingTop="10dp" android:paddingBottom="10dp" />
     <ImageButton android:id="@+id/remove" android:layout_width="40dp" android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_close"
-        android:tint="@color/note_text_variant" android:contentDescription="Remove item" />
+        android:tint="@color/note_text_variant" android:contentDescription="@string/cd_remove_item" />
 </LinearLayout>

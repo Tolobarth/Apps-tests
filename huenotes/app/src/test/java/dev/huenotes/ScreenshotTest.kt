@@ -33,7 +33,7 @@ class ScreenshotTest {
         s.save(Note(title = "Groceries", body = Checklist.serialize(listOf(
             Checklist.Item(true, "Oat milk"), Checklist.Item(false, "Tomatoes"), Checklist.Item(false, "Sourdough"), Checklist.Item(true, "Coffee beans"))),
             checklist = true, color = Note.COLORS[3]))
-        s.save(Note(title = "Idea", body = "A notes app where colour is the first-class way to organise.", color = Note.COLORS[0]))
+        s.save(Note(title = "Idea", body = "A notes app where colour is the first-class way to organise.", color = Note.COLORS[0], pinned = true))
         s.save(Note(title = "Book list", body = "Piranesi\nThe Dispossessed\nA Psalm for the Wild-Built\nBraiding Sweetgrass", color = Note.COLORS[5]))
         s.save(Note(title = "", body = "Call dentist tomorrow morning", color = Note.COLORS[1]))
         s.save(Note(title = "Gift ideas", body = "Ceramic mug set\nPlant for Mum\nConcert tickets", color = Note.COLORS[6], reminderAt = tomorrow + 86_400_000))
@@ -62,6 +62,20 @@ class ScreenshotTest {
     @Test fun editorChecklist() {
         val id = NoteStore(app).list(false).first { it.title == "Groceries" }.id
         shot("editor_checklist", Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup().get())
+    }
+
+    @Test @Config(qualifiers = "fr-w411dp-h891dp-xxhdpi")
+    fun listFrench() = shot("list_fr", Robolectric.buildActivity(ListActivity::class.java).setup().get())
+
+    @Test fun settings() = shot("settings", Robolectric.buildActivity(SettingsActivity::class.java).setup().get())
+
+    @Test @Config(qualifiers = "de-w411dp-h891dp-night-xxhdpi")
+    fun settingsGermanDark() = shot("settings_de_dark", Robolectric.buildActivity(SettingsActivity::class.java).setup().get())
+
+    @Test fun trash() {
+        val s = NoteStore(app)
+        s.trash(s.list(false).first { it.title == "Book list" }.id)
+        shot("trash", Robolectric.buildActivity(TrashActivity::class.java).setup().get())
     }
 
     @Test fun day() = shot("day", Robolectric.buildActivity(DayActivity::class.java).setup().get())

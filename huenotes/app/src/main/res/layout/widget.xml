@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_bg">
-    <TextView android:id="@+id/header" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textStyle="bold" android:textColor="#222222" android:textSize="14sp" />
-    <TextView android:id="@+id/row0" style="@style/WidgetRow" />
-    <TextView android:id="@+id/row1" style="@style/WidgetRow" />
-    <TextView android:id="@+id/row2" style="@style/WidgetRow" />
-    <TextView android:id="@+id/row3" style="@style/WidgetRow" />
-</LinearLayout>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:src="@drawable/widget_bg" android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:padding="14dp">
+        <TextView android:id="@+id/header" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textStyle="bold" android:textColor="#222222" android:textSize="14sp" />
+        <TextView android:id="@+id/row0" style="@style/WidgetRow" />
+        <TextView android:id="@+id/row1" style="@style/WidgetRow" />
+        <TextView android:id="@+id/row2" style="@style/WidgetRow" />
+        <TextView android:id="@+id/row3" style="@style/WidgetRow" />
+    </LinearLayout>
+</FrameLayout>

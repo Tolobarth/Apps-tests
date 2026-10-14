@@ -5,16 +5,16 @@ import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** JSON backup of all notes (including archived). Format version 1. Import adds notes; it never overwrites. */
+/** JSON backup of all live notes (including archived). Format version 2; version 1 files still import. */
 object Backup {
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun toJson(notes: List<Note>): String = JSONObject()
         .put("app", "huenotes").put("version", VERSION)
         .put("notes", JSONArray(notes.map {
             JSONObject().put("title", it.title).put("body", it.body).put("checklist", it.checklist)
-                .put("color", it.color).put("archived", it.archived)
-                .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt)
+                .put("color", it.color).put("archived", it.archived).put("pinned", it.pinned)
+                .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt)
         })).toString(2)
 
     fun fromJson(text: String): List<Note> {
@@ -24,24 +24,34 @@ object Backup {
         val arr = root.getJSONArray("notes")
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
+            val modified = o.optLong("modifiedAt", System.currentTimeMillis())
             Note(
                 title = o.optString("title"), body = o.optString("body"), checklist = o.optBoolean("checklist"),
                 color = o.optInt("color", Note.COLORS[0]), archived = o.optBoolean("archived"),
-                reminderAt = o.optLong("reminderAt"), modifiedAt = o.optLong("modifiedAt", System.currentTimeMillis())
+                pinned = o.optBoolean("pinned"), reminderAt = o.optLong("reminderAt"),
+                modifiedAt = modified, createdAt = o.optLong("createdAt", modified)
             )
         }
     }
 
     fun export(c: Context, store: NoteStore, to: Uri) {
-        val all = store.list(false) + store.list(true)
-        c.contentResolver.openOutputStream(to, "wt")!!.use { it.write(toJson(all).toByteArray()) }
+        c.contentResolver.openOutputStream(to, "wt")!!.use { it.write(toJson(store.list(false) + store.list(true)).toByteArray()) }
     }
 
-    /** Returns how many notes were imported. Parses fully before writing anything. */
-    fun import(c: Context, store: NoteStore, from: Uri): Int {
-        val text = c.contentResolver.openInputStream(from)!!.use { it.readBytes().toString(Charsets.UTF_8) }
-        val notes = fromJson(text).filterNot { it.isEmpty }
-        notes.forEach { n -> Reminders.schedule(c, n.copy(id = store.save(n))) }
-        return notes.size
+    fun import(c: Context, store: NoteStore, from: Uri): Int =
+        importText(c, store, c.contentResolver.openInputStream(from)!!.use { it.readBytes().toString(Charsets.UTF_8) })
+
+    /** Adds notes you don't already have (same title, body and creation time). Parses fully before writing. */
+    fun importText(c: Context, store: NoteStore, text: String): Int {
+        val incoming = fromJson(text).filterNot { it.isEmpty }
+        val have = (store.list(false) + store.list(true)).map { Triple(it.title, it.body, it.createdAt) }.toHashSet()
+        var added = 0
+        incoming.forEach { n ->
+            if (have.add(Triple(n.title, n.body, n.createdAt))) {
+                Reminders.sync(c, n.copy(id = store.save(n, touch = false)))
+                added++
+            }
+        }
+        return added
     }
 }

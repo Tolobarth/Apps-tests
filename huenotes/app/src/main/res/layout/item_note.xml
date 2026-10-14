@@ -12,6 +12,9 @@
         <TextView android:id="@+id/body" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="6dp" android:textSize="14sp" android:lineSpacingMultiplier="1.15"
             android:maxLines="8" android:ellipsize="end" android:textColor="@color/note_text_variant" />
+        <TextView android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:textSize="12sp" android:textStyle="bold"
+            android:textColor="@color/note_text_variant" android:visibility="gone" />
         <TextView android:id="@+id/reminder" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:drawablePadding="6dp" android:gravity="center_vertical"
             android:drawableStart="@drawable/ic_alarm" android:drawableTint="@color/note_text_variant"

@@ -1,17 +1,16 @@
 package dev.huenotes
 
 import android.app.Activity
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 import android.content.Context
 import android.text.InputType
 import android.util.Base64
 import android.view.View
 import android.view.WindowManager
-import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -66,22 +65,23 @@ object Lock {
         val input = TextInputEditText(til.context).apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
         til.addView(input)
         MaterialAlertDialogBuilder(a).setTitle(title).setView(til)
-            .setPositiveButton("OK") { _, _ -> onOk(input.text.toString()) }
-            .setNegativeButton("Cancel") { _, _ -> onCancel?.invoke() }
+            .setPositiveButton(R.string.btn_ok) { _, _ -> onOk(input.text.toString()) }
+            .setNegativeButton(R.string.btn_cancel) { _, _ -> onCancel?.invoke() }
             .setCancelable(onCancel == null).show()
     }
 
-    fun setupFlow(a: Activity, then: () -> Unit = {}) = prompt(a, "New password (min 4 chars)", { pw ->
-        if (pw.length < 4) Toast.makeText(a, "Too short", Toast.LENGTH_SHORT).show()
-        else { set(a, pw); Toast.makeText(a, "Password set", Toast.LENGTH_SHORT).show(); then() }
+    fun setupFlow(a: Activity, then: () -> Unit = {}) = prompt(a, a.getString(R.string.lock_new), { pw ->
+        if (pw.length < 4) Toast.makeText(a, R.string.lock_short, Toast.LENGTH_SHORT).show()
+        else { set(a, pw); Toast.makeText(a, R.string.lock_set, Toast.LENGTH_SHORT).show(); then() }
     })
 
-    fun changeFlow(a: Activity) = prompt(a, "Current password", { cur ->
-        if (verify(a, cur)) setupFlow(a) else Toast.makeText(a, "Wrong password", Toast.LENGTH_SHORT).show()
+    fun changeFlow(a: Activity) = prompt(a, a.getString(R.string.lock_current), { cur ->
+        if (verify(a, cur)) setupFlow(a) else Toast.makeText(a, R.string.lock_wrong, Toast.LENGTH_SHORT).show()
     })
 
-    fun removeFlow(a: Activity) = prompt(a, "Current password", { cur ->
-        if (verify(a, cur)) { clear(a); Widgets.refresh(a) } else Toast.makeText(a, "Wrong password", Toast.LENGTH_SHORT).show()
+    fun removeFlow(a: Activity, then: () -> Unit = {}) = prompt(a, a.getString(R.string.lock_current), { cur ->
+        if (verify(a, cur)) { clear(a); Widgets.refresh(a); Toast.makeText(a, R.string.lock_removed, Toast.LENGTH_SHORT).show(); then() }
+        else Toast.makeText(a, R.string.lock_wrong, Toast.LENGTH_SHORT).show()
     })
 }
 
@@ -101,10 +101,10 @@ abstract class GatedActivity : AppCompatActivity() {
         } else onUnlocked()
     }
 
-    private fun ask(content: View): Unit = Lock.prompt(this, "Password", { pw ->
+    private fun ask(content: View): Unit = Lock.prompt(this, getString(R.string.lock_enter), { pw ->
         dialogUp = false
         if (Lock.verify(this, pw)) { Lock.markUnlocked(); content.visibility = View.VISIBLE; onUnlocked() }
-        else { Toast.makeText(this, "Wrong password", Toast.LENGTH_SHORT).show(); dialogUp = true; ask(content) }
+        else { Toast.makeText(this, R.string.lock_wrong, Toast.LENGTH_SHORT).show(); dialogUp = true; ask(content) }
     }, onCancel = { dialogUp = false; finishAffinity() })
 
     override fun onPause() { super.onPause(); Lock.markLeft() }
