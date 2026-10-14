@@ -30,9 +30,9 @@ class SyncTest {
     // ---- pure merge rules ---------------------------------------------------------------------
 
     @Test fun newerEditWinsOnEitherSide() {
-        val r = SyncEngine.merge(snap(n("a", "local", 100)), snap(n("a", "remote", 200)), 1000)
+        val r = SyncEngine.merge(snap(n("a", "local", 100)), snap(n("a", "remote", 200)), 1000, mapOf("a" to 100L))
         assertEquals(listOf("remote"), r.upserts.map { it.title }); assertFalse(r.needUpload)
-        val r2 = SyncEngine.merge(snap(n("a", "local", 300)), snap(n("a", "remote", 200)), 1000)
+        val r2 = SyncEngine.merge(snap(n("a", "local", 300)), snap(n("a", "remote", 200)), 1000, mapOf("a" to 200L))
         assertTrue(r2.upserts.isEmpty()); assertTrue(r2.needUpload)
     }
 
@@ -131,13 +131,16 @@ class SyncTest {
         assertTrue(a.allForSync().isEmpty() && b.allForSync().isEmpty())
     }
 
-    @Test fun simultaneousEditsConvergeToTheLaterOne() {
+    @Test fun simultaneousEditsKeepTheLaterOneAndACopyOfTheOther() {
         val a = device("A"); val b = device("B"); val cloud = MemoryRemote()
         a.save(Note(title = "base")); SyncRunner.sync(a, cloud); tick(); SyncRunner.sync(b, cloud); tick()
         a.save(a.list(false).single().copy(title = "from A")); tick()
         b.save(b.list(false).single().copy(title = "from B"))
         SyncRunner.sync(a, cloud); SyncRunner.sync(b, cloud); SyncRunner.sync(a, cloud)
-        assertEquals("from B", a.list(false).single().title); assertEquals("from B", b.list(false).single().title)
+        for (d in listOf(a, b)) {
+            val titles = d.list(false).map { it.title }.toSet()
+            assertEquals(2, d.list(false).size); assertTrue(titles.contains("from B")); assertTrue(titles.any { it.startsWith("from A") })
+        }
     }
 
     @Test fun editMadeDuringSyncIsNotOverwritten() {
