@@ -9,6 +9,14 @@ android {
             storeFile = file("debug.keystore"); storePassword = "android"; keyAlias = "androiddebugkey"; keyPassword = "android"
         }
     }
+    // Release signing comes from the environment so no secret is ever committed (see docs/store/release-signing.md).
+    System.getenv("HUENOTES_KEYSTORE")?.let { ks ->
+        signingConfigs.create("release") {
+            storeFile = file(ks); storePassword = System.getenv("HUENOTES_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("HUENOTES_KEY_ALIAS"); keyPassword = System.getenv("HUENOTES_KEY_PASSWORD")
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
+    }
     namespace = "dev.huenotes"
     compileSdk = 36
     defaultConfig {
