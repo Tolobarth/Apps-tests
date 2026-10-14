@@ -137,3 +137,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 
 ### v0.10 — Conflict copies
 - Sync remembers the version both devices last agreed on (`sync_base`, DB v6). If a note was changed on two devices with different text, the newer edit stays as the note and the older becomes a "(conflict copy)" note (same copy on every device); attachments from both sides are kept. A toast reports it.
+
+### v0.11 — Sync status and background sync
+- WorkManager: sync every ~6 h when online and ~30 s after a change (debounced), only when connected and "Sync automatically" is on. Never shows a consent screen; if sign-in has expired the status line says so.
+- Settings → Sync shows the last sync time or the last error in plain words (offline, sign-in expired, Google busy). Transient failures are retried up to 3 times.
+- Not yet tested against real Google or on a device; background timing is up to Android.
