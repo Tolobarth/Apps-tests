@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="import_others">Importer depuis d’autres applications</string>
+    <string name="import_others_sum">Google Keep, fichiers texte et Markdown</string>
+    <string name="import_keep">Google Keep (Takeout .zip ou fichiers .json)</string>
+    <string name="import_text">Fichiers texte ou Markdown (.txt, .md)</string>
+    <string name="export_markdown">Exporter en Markdown</string>
+    <string name="export_markdown_sum">Un fichier .md par note, avec photos et enregistrements, dans un .zip</string>
     <string name="backup_auto_title">Sauvegarde automatique</string>
     <string name="backup_auto_off">Désactivée. Choisissez un dossier pour commencer.</string>
     <string name="backup_auto_sum">Copie quotidienne dans « %1$s », les %2$d dernières conservées</string>

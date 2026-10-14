@@ -64,7 +64,7 @@ object BackupZip {
         } finally { tmp.deleteRecursively() }
     }
 
-    private fun copyLimited(from: InputStream, to: File, maxEntry: Long, maxLeft: Long): Long {
+    internal fun copyLimited(from: InputStream, to: File, maxEntry: Long, maxLeft: Long): Long {
         var n = 0L
         to.outputStream().use { o ->
             val buf = ByteArray(64 * 1024)

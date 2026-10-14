@@ -2,6 +2,7 @@ package dev.huenotes
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.graphics.drawable.GradientDrawable
 import androidx.activity.result.IntentSenderRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
@@ -33,6 +34,13 @@ class SettingsActivity : GatedActivity() {
             Prefs.setBackupFolder(this, uri.toString(), AutoBackup.displayName(this, uri)); Prefs.setBackupError(this, "")
             AutoBackup.apply(this); render(); backupNow()
         }
+    }
+    private var importSource = Importers.Source.KEEP
+    private val otherImportLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) importFromOthers(uris)
+    }
+    private val markdownLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) guarded { contentResolver.openOutputStream(uri, "wt")!!.use { MarkdownExport.write(NoteStore(this), it) }; toast(getString(R.string.backup_saved)) }
     }
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) guarded { toast(imported(Backup.import(this, NoteStore(this), uri))) }
@@ -128,6 +136,8 @@ class SettingsActivity : GatedActivity() {
         section(R.string.settings_backup)
         row(getString(R.string.settings_export), getString(R.string.settings_export_sum)) { exportLauncher.launch("huenotes-backup.zip") }
         row(getString(R.string.settings_import), getString(R.string.settings_import_sum)) { importLauncher.launch(arrayOf("*/*")) }
+        row(getString(R.string.import_others), getString(R.string.import_others_sum)) { pickImportSource() }
+        row(getString(R.string.export_markdown), getString(R.string.export_markdown_sum)) { markdownLauncher.launch("huenotes-markdown.zip") }
         run {
             val err = Prefs.backupError(this); val last = Prefs.lastBackup(this)
             if (!AutoBackup.enabled(this)) row(getString(R.string.backup_auto_title), getString(R.string.backup_auto_off)) { folderLauncher.launch(null) }
@@ -249,6 +259,23 @@ class SettingsActivity : GatedActivity() {
         MaterialAlertDialogBuilder(this).setTitle(R.string.sync_disconnect_title).setMessage(R.string.sync_disconnect_msg)
             .setPositiveButton(R.string.sync_disconnect) { _, _ -> Prefs.setSyncEmail(this, ""); Prefs.setLastSync(this, 0); Prefs.setSyncError(this, ""); SyncScheduler.apply(this); render() }
             .setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private fun pickImportSource() {
+        val items = arrayOf(getString(R.string.import_keep), getString(R.string.import_text))
+        MaterialAlertDialogBuilder(this).setTitle(R.string.import_others).setItems(items) { _, i ->
+            importSource = if (i == 0) Importers.Source.KEEP else Importers.Source.TEXT
+            otherImportLauncher.launch(arrayOf("*/*"))
+        }.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private fun importFromOthers(uris: List<Uri>) {
+        toast(getString(R.string.sync_running))
+        val source = importSource
+        Thread {
+            val r = runCatching { Importers.importUris(applicationContext, NoteStore(applicationContext), uris, source) }
+            runOnUiThread { toast(r.fold({ imported(it) }, { getString(R.string.backup_failed, it.message ?: "") })) }
+        }.start()
     }
 
     private fun backupNow() {
