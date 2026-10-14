@@ -6,7 +6,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelper(context.applicationContext, name, null, 3) {
+class NoteStore(
+    context: Context,
+    name: String = "huenotes.db",
+    val storage: AttachmentStorage = AttachmentStorage.of(context),
+) : SQLiteOpenHelper(context.applicationContext, name, null, 4) {
     private val appContext = context.applicationContext
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -19,6 +23,12 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
         )
         db.execSQL("CREATE UNIQUE INDEX notes_uid ON notes(uid)")
         db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
+        createAttachments(db)
+    }
+
+    private fun createAttachments(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)")
+        db.execSQL("CREATE INDEX attachments_note ON attachments(note_uid)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, o: Int, n: Int) {
@@ -35,6 +45,7 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
             db.execSQL("CREATE UNIQUE INDEX notes_uid ON notes(uid)")
             db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
         }
+        if (o < 4) createAttachments(db)
     }
 
     private fun Cursor.toNote() = Note(
@@ -101,17 +112,62 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
     private fun removeWhere(where: String, args: Array<String>): Int {
         val db = writableDatabase
         var n = 0
+        val doomed = attachmentsWhere("note_uid IN (SELECT uid FROM notes WHERE $where)", args)
         db.beginTransaction()
         try {
             val now = System.currentTimeMillis()
+            db.execSQL("DELETE FROM attachments WHERE note_uid IN (SELECT uid FROM notes WHERE $where)", args)
             db.rawQuery("SELECT uid FROM notes WHERE $where", args).use { c ->
                 while (c.moveToNext()) db.execSQL("INSERT OR REPLACE INTO tombstones(uid, at) VALUES(?, ?)", arrayOf(c.getString(0), now))
             }
             n = db.delete("notes", where, args)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
+        doomed.forEach { storage.file(it).delete() }
         if (n > 0) notifyChanged()
         return n
+    }
+
+    // ---- attachments -------------------------------------------------------------------------
+
+    private fun attachmentsWhere(where: String, args: Array<String>): List<Attachment> =
+        readableDatabase.rawQuery("SELECT $ACOLS FROM attachments WHERE $where ORDER BY created_at, rowid", args).use { c ->
+            generateSequence {
+                if (c.moveToNext()) Attachment(c.getString(0), c.getString(1), AttachmentKind.of(c.getInt(2)), c.getLong(3), c.getLong(4)) else null
+            }.toList()
+        }
+
+    fun attachmentsFor(noteUid: String): List<Attachment> = attachmentsWhere("note_uid=?", arrayOf(noteUid))
+    fun attachmentsByNote(): Map<String, List<Attachment>> = attachmentsWhere("1=1", emptyArray()).groupBy { it.noteUid }
+
+    /** Adding or removing an attachment counts as a change to its note, so sync picks it up. */
+    fun addAttachment(a: Attachment) {
+        writableDatabase.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at) VALUES(?,?,?,?,?)",
+            arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt))
+        touch(a.noteUid)
+    }
+
+    fun removeAttachment(a: Attachment) {
+        writableDatabase.execSQL("DELETE FROM attachments WHERE uid=?", arrayOf(a.uid))
+        storage.file(a).delete()
+        touch(a.noteUid)
+    }
+
+    private fun touch(noteUid: String) {
+        writableDatabase.execSQL("UPDATE notes SET sync_at=? WHERE uid=?", arrayOf(System.currentTimeMillis(), noteUid))
+        notifyChanged()
+    }
+
+    /** Drops attachment rows whose note is gone and files nothing refers to. Call from the main screen, not mid-edit. */
+    fun cleanupAttachments(): Int {
+        val db = writableDatabase
+        val orphans = attachmentsWhere("note_uid NOT IN (SELECT uid FROM notes)", emptyArray())
+        orphans.forEach { db.execSQL("DELETE FROM attachments WHERE uid=?", arrayOf(it.uid)) }
+        val known = attachmentsWhere("1=1", emptyArray()).map { it.fileName }.toHashSet()
+        var removed = orphans.size
+        storage.dir.listFiles()?.forEach { if (it.name !in known && it.delete()) removed++ }
+        orphans.forEach { storage.file(it).delete() }
+        return removed
     }
 
     // ---- sync support ------------------------------------------------------------------------
@@ -128,9 +184,13 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
      * Applies a merge result in one transaction. [baseline] maps uid to the updatedAt the merge saw locally; a note edited
      * since then is left alone and picked up by the next sync.
      */
-    fun applySync(upserts: List<Note>, deleteUids: Collection<String>, tombs: Map<String, Long>, baseline: Map<String, Long>): Applied {
+    fun applySync(
+        upserts: List<Note>, deleteUids: Collection<String>, tombs: Map<String, Long>, baseline: Map<String, Long>,
+        upsertAttachments: Map<String, List<Attachment>> = emptyMap(),
+    ): Applied {
         val db = writableDatabase
         val upserted = ArrayList<Note>(); val removed = ArrayList<Long>()
+        val staleFiles = ArrayList<Attachment>()
         db.beginTransaction()
         try {
             for (n in upserts) {
@@ -144,16 +204,25 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
                 }
                 val id = if (cur == null) db.insert("notes", null, v) else { db.update("notes", v, "uid=?", arrayOf(n.uid)); cur.id }
                 upserted += n.copy(id = id)
+                upsertAttachments[n.uid]?.let { fresh ->
+                    val keep = fresh.map { it.uid }.toSet()
+                    attachmentsWhere("note_uid=?", arrayOf(n.uid)).filter { it.uid !in keep }.forEach { staleFiles += it }
+                    db.execSQL("DELETE FROM attachments WHERE note_uid=?", arrayOf(n.uid))
+                    fresh.forEach { a -> db.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at) VALUES(?,?,?,?,?)", arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt)) }
+                }
             }
             for (uid in deleteUids) {
                 val cur = query("uid=?", arrayOf(uid), "id").firstOrNull() ?: continue
                 if (cur.updatedAt != baseline[uid]) continue
+                staleFiles += attachmentsWhere("note_uid=?", arrayOf(uid))
+                db.execSQL("DELETE FROM attachments WHERE note_uid=?", arrayOf(uid))
                 db.delete("notes", "uid=?", arrayOf(uid)); removed += cur.id
             }
             for ((uid, at) in tombs) db.execSQL("INSERT OR REPLACE INTO tombstones(uid, at) VALUES(?, MAX(?, COALESCE((SELECT at FROM tombstones WHERE uid=?), 0)))", arrayOf(uid, at, uid))
             db.execSQL("DELETE FROM tombstones WHERE at < ?", arrayOf(System.currentTimeMillis() - SyncEngine.TOMBSTONE_KEEP_MS))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
+        staleFiles.forEach { storage.file(it).delete() }
         notifyChanged()
         return Applied(upserted, removed)
     }
@@ -162,6 +231,7 @@ class NoteStore(context: Context, name: String = "huenotes.db") : SQLiteOpenHelp
 
     companion object {
         const val TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000
+        private const val ACOLS = "uid,note_uid,kind,duration,created_at"
         private const val COLS = "id,title,body,checklist,color,archived,reminder_at,modified_at,created_at,pinned,deleted_at,uid,sync_at"
     }
 }

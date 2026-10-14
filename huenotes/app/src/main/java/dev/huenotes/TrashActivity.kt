@@ -23,6 +23,7 @@ class TrashActivity : GatedActivity() {
         tb.setOnMenuItemClickListener { confirmEmpty(); true }
 
         adapter = NoteAdapter({ choose(it) })
+        adapter.storage = store.storage
         val recycler = findViewById<RecyclerView>(R.id.recycler)
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
@@ -41,7 +42,7 @@ class TrashActivity : GatedActivity() {
 
     private fun refresh() {
         val notes = store.trashed()
-        adapter.submit(notes)
+        adapter.submit(notes, attachments = store.attachmentsByNote())
         findViewById<View>(R.id.empty).visibility = if (notes.isEmpty()) View.VISIBLE else View.GONE
         findViewById<View>(R.id.banner).visibility = if (notes.isEmpty()) View.GONE else View.VISIBLE
     }

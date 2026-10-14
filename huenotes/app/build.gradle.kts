@@ -15,8 +15,8 @@ android {
         applicationId = "dev.huenotes"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
@@ -27,6 +27,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")

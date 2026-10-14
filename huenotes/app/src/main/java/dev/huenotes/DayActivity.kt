@@ -23,6 +23,7 @@ class DayActivity : GatedActivity() {
         findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
         adapter = NoteAdapter({ startActivity(Intent(this, EditorActivity::class.java).putExtra("id", it.id)) })
         adapter.showTimeOnly = true
+        adapter.storage = store.storage
         findViewById<RecyclerView>(R.id.recycler).apply { layoutManager = LinearLayoutManager(context); this.adapter = this@DayActivity.adapter }
         header = findViewById(R.id.dayHeader)
         findViewById<CalendarView>(R.id.calendar).apply {
@@ -40,7 +41,7 @@ class DayActivity : GatedActivity() {
         }
         val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
         val notes = store.reminderBetween(start.timeInMillis, end.timeInMillis)
-        adapter.submit(notes)
+        adapter.submit(notes, attachments = store.attachmentsByNote())
         val date = DateFormat.getDateInstance(DateFormat.FULL).format(start.time)
         header.text = if (notes.isEmpty()) "$date  ·  ${getString(R.string.day_nothing)}"
         else "$date  ·  " + resources.getQuantityString(R.plurals.reminder_count, notes.size, notes.size)

@@ -33,6 +33,11 @@ Each note has a stable id and a "last changed" time. Per note, the latest change
 devices before they sync keeps only the later edit. Deleting for good leaves a tombstone (kept 90 days) so other
 devices delete it too; a note edited after that deletion is kept. Merge rules are covered by `SyncTest`.
 
+## Attachments
+
+Photos, drawings and voice notes are stored next to the notes file as separate hidden files (`att-<id>`). Photos are
+resized to 1280 px and voice notes are about 0.5 MB per minute, so they count lightly against the user's Drive storage.
+
 ## Privacy note
 
 The Drive copy is readable by Google like any Drive data; it is not end-to-end encrypted. The in-app password only locks

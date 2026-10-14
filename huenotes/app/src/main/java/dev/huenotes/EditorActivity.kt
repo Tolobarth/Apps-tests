@@ -1,6 +1,16 @@
 package dev.huenotes
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.File
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -35,14 +45,29 @@ class EditorActivity : GatedActivity() {
     private lateinit var chip: Chip
     private lateinit var meta: TextView
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var attachBox: LinearLayout
     private var note = Note()
     private var deleted = false
+    private val attachments = ArrayList<Attachment>()
+    private var editingDrawing: Attachment? = null
+    private var recorder: VoiceRecorder? = null
+    private var recDialog: androidx.appcompat.app.AlertDialog? = null
+
+    private val pickImage = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) addImage(uri) }
+    private val drawLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val path = r.data?.getStringExtra("path")
+        if (r.resultCode == RESULT_OK && path != null) addDrawing(File(path)) else editingDrawing = null
+    }
+    private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) showRecorder() else Toast.makeText(this, R.string.rec_permission, Toast.LENGTH_LONG).show()
+    }
 
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
         store = NoteStore(this)
         note = store.get(intent.getLongExtra("id", 0)) ?: Note(color = Prefs.defaultColor(this))
-        val startAsList = note.id == 0L && intent.getBooleanExtra("checklist", false)
+        val start = if (note.id == 0L) intent.getStringExtra("start") else null
+        val startAsList = start == "list"
         if (startAsList) note = note.copy(checklist = true)
         setContentView(R.layout.activity_editor)
 
@@ -84,8 +109,22 @@ class EditorActivity : GatedActivity() {
         findViewById<View>(R.id.reminderButton).setOnClickListener { quickReminders() }
         chip.setOnClickListener { quickReminders() }
         chip.setOnCloseIconClickListener { note = note.copy(reminderAt = 0); renderMeta() }
+        attachBox = findViewById(R.id.attachments)
+        attachments.addAll(store.attachmentsFor(note.uid))
+        renderAttachments()
+        findViewById<View>(R.id.imageButton).setOnClickListener { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+        findViewById<View>(R.id.drawButton).setOnClickListener { launchDrawing(null) }
+        findViewById<View>(R.id.micButton).setOnClickListener { showRecorder() }
         applyColor()
         renderMeta()
+        if (start != null) window.decorView.post {
+            when (start) {
+                "image" -> pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                "drawing" -> launchDrawing(null)
+                "audio" -> showRecorder()
+                "text" -> bodyEdit.requestFocus()
+            }
+        }
     }
 
     // ---- state -------------------------------------------------------------------------------
@@ -106,9 +145,141 @@ class EditorActivity : GatedActivity() {
         super.onPause()
         if (deleted) return
         val n = current()
-        if (n.isEmpty) { if (n.id != 0L) { store.delete(n.id); Reminders.cancel(this, n.id) }; return }
+        if (n.isEmpty && attachments.isEmpty()) { if (n.id != 0L) { store.delete(n.id); Reminders.cancel(this, n.id) }; return }
+        saveNow()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Player.stop()
+        stopRecording(save = true)   // Android silences the mic for backgrounded apps, so keep what we have
+    }
+
+    override fun onDestroy() { super.onDestroy(); stopRecording(save = false) }
+
+    private fun saveNow() {
+        val n = current()
+        if (n.isEmpty && attachments.isEmpty()) return
         note = n.copy(id = store.save(n))
         Reminders.sync(this, note)
+    }
+
+    // ---- attachments -------------------------------------------------------------------------
+
+    private fun attach(a: Attachment) {
+        saveNow()                      // the note row must exist before it can own attachments
+        store.addAttachment(a)
+        attachments += a
+        renderAttachments()
+    }
+
+    private fun addImage(uri: Uri) {
+        val a = Attachment(noteUid = note.uid, kind = AttachmentKind.IMAGE)
+        try { AttachmentFiles.importImage(contentResolver, uri, store.storage.file(a)) }
+        catch (e: Exception) { store.storage.file(a).delete(); Toast.makeText(this, R.string.image_failed, Toast.LENGTH_SHORT).show(); return }
+        attach(a)
+    }
+
+    private fun launchDrawing(existing: Attachment?) {
+        editingDrawing = existing
+        val i = Intent(this, DrawingActivity::class.java)
+        existing?.let { i.putExtra("base", store.storage.file(it).path) }
+        drawLauncher.launch(i)
+    }
+
+    private fun addDrawing(tmp: File) {
+        val a = Attachment(noteUid = note.uid, kind = AttachmentKind.DRAWING)
+        try { tmp.copyTo(store.storage.file(a), overwrite = true) }
+        catch (e: Exception) { Toast.makeText(this, R.string.image_failed, Toast.LENGTH_SHORT).show(); return }
+        finally { tmp.delete() }
+        editingDrawing?.let { old -> store.removeAttachment(old); attachments.remove(old) }   // an edit replaces the old drawing
+        editingDrawing = null
+        attach(a)
+    }
+
+    private fun showRecorder() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { micPermission.launch(Manifest.permission.RECORD_AUDIO); return }
+        if (recorder != null) return
+        val r = VoiceRecorder(this) { stopRecording(save = true) }
+        if (!r.start()) { Toast.makeText(this, R.string.rec_failed, Toast.LENGTH_SHORT).show(); return }
+        recorder = r
+        val timer = TextView(this).apply {
+            text = "● 0:00"; textSize = 28f; gravity = Gravity.CENTER; setTextColor(getColor(R.color.on_surface))
+            setPadding(0, Palette.dp(context, 24), 0, Palette.dp(context, 8))
+        }
+        recDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.rec_title).setView(timer)
+            .setPositiveButton(R.string.rec_stop) { _, _ -> stopRecording(save = true) }
+            .setNegativeButton(R.string.btn_cancel) { _, _ -> stopRecording(save = false) }
+            .setCancelable(false).show()
+        val h = Handler(Looper.getMainLooper())
+        h.post(object : Runnable {
+            override fun run() { if (recorder === r) { timer.text = "● " + AttachmentFiles.duration(r.elapsedMs); h.postDelayed(this, 250) } }
+        })
+    }
+
+    private fun stopRecording(save: Boolean) {
+        val r = recorder ?: return
+        recorder = null
+        recDialog?.dismiss(); recDialog = null
+        if (!save) { r.cancel(); return }
+        val (file, ms) = r.stop() ?: run { Toast.makeText(this, R.string.rec_failed, Toast.LENGTH_SHORT).show(); return }
+        val a = Attachment(noteUid = note.uid, kind = AttachmentKind.AUDIO, durationMs = ms)
+        try { file.copyTo(store.storage.file(a), overwrite = true) }
+        catch (e: Exception) { Toast.makeText(this, R.string.rec_failed, Toast.LENGTH_SHORT).show(); return }
+        finally { file.delete() }
+        attach(a)
+    }
+
+    private fun renderAttachments() {
+        attachBox.removeAllViews()
+        attachments.forEach { a -> attachBox.addView(if (a.kind == AttachmentKind.AUDIO) audioView(a) else imageView(a)) }
+    }
+
+    private fun imageView(a: Attachment): View {
+        val v = LayoutInflater.from(this).inflate(R.layout.item_attach_image, attachBox, false)
+        val img = v.findViewById<android.widget.ImageView>(R.id.img)
+        val bmp = AttachmentFiles.thumb(store.storage.file(a), 1024)
+        if (bmp != null) img.setImageBitmap(bmp) else img.setBackgroundColor(getColor(R.color.outline))
+        v.setOnClickListener { if (a.kind == AttachmentKind.DRAWING) launchDrawing(a) else viewImage(a) }
+        v.findViewById<View>(R.id.remove).setOnClickListener { confirmRemove(a) }
+        return v
+    }
+
+    private fun audioView(a: Attachment): View {
+        val v = LayoutInflater.from(this).inflate(R.layout.item_attach_audio, attachBox, false)
+        val play = v.findViewById<android.widget.ImageButton>(R.id.play)
+        val bar = v.findViewById<android.widget.ProgressBar>(R.id.progress)
+        val time = v.findViewById<TextView>(R.id.time)
+        val file = store.storage.file(a)
+        time.text = AttachmentFiles.duration(a.durationMs)
+        play.isEnabled = file.exists(); play.alpha = if (file.exists()) 1f else 0.4f
+        play.setOnClickListener {
+            Player.toggle(a.uid, file) { playing, pos, dur ->
+                play.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+                play.contentDescription = getString(if (playing) R.string.cd_pause else R.string.cd_play)
+                bar.max = maxOf(1, dur); bar.progress = pos
+                time.text = if (dur > 0) AttachmentFiles.duration(pos.toLong()) + " / " + AttachmentFiles.duration(dur.toLong()) else AttachmentFiles.duration(a.durationMs)
+            }
+        }
+        v.findViewById<View>(R.id.remove).setOnClickListener { confirmRemove(a) }
+        return v
+    }
+
+    private fun viewImage(a: Attachment) {
+        val bmp = AttachmentFiles.thumb(store.storage.file(a), 2048) ?: return
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        d.setContentView(android.widget.ImageView(this).apply {
+            setImageBitmap(bmp); scaleType = android.widget.ImageView.ScaleType.FIT_CENTER; setBackgroundColor(android.graphics.Color.BLACK)
+            setOnClickListener { d.dismiss() }
+        })
+        d.show()
+    }
+
+    private fun confirmRemove(a: Attachment) {
+        MaterialAlertDialogBuilder(this).setTitle(R.string.attach_remove_title)
+            .setPositiveButton(R.string.attach_remove) { _, _ ->
+                Player.stop(); store.removeAttachment(a); attachments.remove(a); renderAttachments()
+            }.setNegativeButton(R.string.btn_cancel, null).show()
     }
 
     // ---- appearance --------------------------------------------------------------------------

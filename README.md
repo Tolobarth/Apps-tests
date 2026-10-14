@@ -80,3 +80,13 @@ screens; widgets and notifications follow it too through `Loc`.
 deletions), a fixed debug signing key so updates install over older builds, and an INTERNET permission that is used only
 for sync. Setup steps: `docs/google-sync-setup.md`. Sync logic, the Drive client (against a local fake server) and the
 database upgrades are covered by tests; real Google sign-in has not been exercised.
+
+### v0.4
+
+The "+" button is now a speed-dial (Image, Drawing, Audio, List, Text). Notes can carry photos (resized to 1280 px, EXIF
+rotation fixed), drawings (pen colours, sizes, eraser, undo; tap a drawing to draw on top of it) and voice notes
+(AAC, up to 10 minutes). Cards show a thumbnail and the voice-note length. Attachments sync through the same Drive
+app-data folder as notes: files are uploaded before the notes file, and unreferenced files are only swept after 24 hours.
+
+Known limits: the JSON backup and the daily snapshots contain note text only, not attachments (use Google sync to keep
+them safe); camera capture, microphone recording and audio playback are not covered by automated tests.

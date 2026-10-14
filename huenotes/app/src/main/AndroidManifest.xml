@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -24,6 +25,7 @@
         </activity>
         <activity android:name=".EditorActivity" android:exported="false" />
         <activity android:name=".DayActivity" android:exported="false" />
+        <activity android:name=".DrawingActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".TrashActivity" android:exported="false" />
         <receiver android:name=".RecentWidget" android:exported="false" android:label="@string/widget_label_recent">

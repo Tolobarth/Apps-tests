@@ -29,9 +29,15 @@ class NoteAdapter(
 
     private var rows: List<Row> = emptyList()
     var showTimeOnly = false
+    var storage: AttachmentStorage? = null
+    private var attachments: Map<String, List<Attachment>> = emptyMap()
 
     /** With [groupPinned], pinned notes get a "Pinned" header and the rest an "Others" header. */
-    fun submit(notes: List<Note>, groupPinned: Boolean = false, pinnedLabel: String = "", othersLabel: String = "") {
+    fun submit(
+        notes: List<Note>, groupPinned: Boolean = false, pinnedLabel: String = "", othersLabel: String = "",
+        attachments: Map<String, List<Attachment>> = emptyMap(),
+    ) {
+        this.attachments = attachments
         val out = ArrayList<Row>()
         val pinned = if (groupPinned) notes.filter { it.pinned } else emptyList()
         val rest = if (groupPinned) notes.filterNot { it.pinned } else notes
@@ -48,6 +54,9 @@ class NoteAdapter(
 
     class NoteVH(v: View) : RecyclerView.ViewHolder(v) {
         val card: MaterialCardView = v.findViewById(R.id.card)
+        val thumb: android.widget.ImageView = v.findViewById(R.id.thumb)
+        val content: View = v.findViewById(R.id.content)
+        val audio: TextView = v.findViewById(R.id.audio)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
         val progress: TextView = v.findViewById(R.id.progress)
@@ -88,7 +97,16 @@ class NoteAdapter(
         val preview = if (n.checklist) checklistPreview(c, items) else n.body.trim()
         h.body.text = preview
         h.body.visibility = if (preview.isEmpty()) View.GONE else View.VISIBLE
-        if (n.title.isBlank() && preview.isEmpty()) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
+        val atts = attachments[n.uid].orEmpty()
+        if (n.title.isBlank() && preview.isEmpty() && atts.isEmpty()) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
+        val visual = atts.firstOrNull { it.kind != AttachmentKind.AUDIO }
+        val bmp = visual?.let { v -> storage?.let { AttachmentFiles.thumb(it.file(v), 480) } }
+        if (bmp != null) { h.thumb.setImageBitmap(bmp); h.thumb.visibility = View.VISIBLE } else { h.thumb.setImageDrawable(null); h.thumb.visibility = View.GONE }
+        val audios = atts.filter { it.kind == AttachmentKind.AUDIO }
+        if (audios.isNotEmpty()) {
+            h.audio.text = AttachmentFiles.duration(audios.sumOf { it.durationMs }) + if (audios.size > 1) " (×${audios.size})" else ""
+            h.audio.visibility = View.VISIBLE
+        } else h.audio.visibility = View.GONE
         if (items.isNotEmpty()) {
             h.progress.text = c.getString(R.string.checklist_progress, items.count { it.done }, items.size)
             h.progress.visibility = View.VISIBLE
@@ -99,6 +117,8 @@ class NoteAdapter(
             else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(d)
             h.reminder.visibility = View.VISIBLE
         } else h.reminder.visibility = View.GONE
+        val anyText = listOf(h.title, h.body, h.progress, h.audio, h.reminder).any { it.visibility == View.VISIBLE }
+        h.content.visibility = if (anyText) View.VISIBLE else View.GONE
     }
 
     private fun checklistPreview(c: android.content.Context, items: List<Checklist.Item>): CharSequence {

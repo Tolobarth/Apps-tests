@@ -63,13 +63,38 @@
         </FrameLayout>
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fab" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="92dp"
-        android:text="@string/new_note" app:icon="@drawable/ic_add" />
-
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_gravity="bottom" app:menu="@menu/bottom_nav"
         android:background="@color/surface" app:labelVisibilityMode="labeled" />
+    <View android:id="@+id/scrim" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@color/scrim" android:visibility="gone" android:clickable="true" android:focusable="true" />
+    <LinearLayout android:id="@+id/dial" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="168dp"
+        android:orientation="vertical" android:gravity="end" android:visibility="gone">
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialImage" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_image" app:icon="@drawable/ic_image"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialDrawing" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_drawing" app:icon="@drawable/ic_brush"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialAudio" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_audio" app:icon="@drawable/ic_mic"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialList" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_list" app:icon="@drawable/ic_checklist"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialText" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_text" app:icon="@drawable/ic_text"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+    </LinearLayout>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="92dp"
+        android:src="@drawable/ic_add" android:contentDescription="@string/new_note" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

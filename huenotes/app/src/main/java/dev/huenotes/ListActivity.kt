@@ -39,6 +39,7 @@ class ListActivity : GatedActivity() {
         setContentView(R.layout.activity_main)
 
         adapter = NoteAdapter({ openEditor(it.id) }, { n, v -> showNoteMenu(n, v) })
+        adapter.storage = store.storage
         layoutManager = StaggeredGridLayoutManager(if (Prefs.grid(this)) 2 else 1, StaggeredGridLayoutManager.VERTICAL)
         val recycler = findViewById<RecyclerView>(R.id.recycler)
         recycler.layoutManager = layoutManager
@@ -59,7 +60,10 @@ class ListActivity : GatedActivity() {
             override fun onTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
         })
         filterRow = findViewById(R.id.filterRow)
-        findViewById<View>(R.id.fab).setOnClickListener { showAddSheet() }
+        onBackPressedDispatcher.addCallback(this, closeDial)
+        findViewById<View>(R.id.fab).setOnClickListener { setDial(!dialOpen) }
+        findViewById<View>(R.id.scrim).setOnClickListener { setDial(false) }
+        dialItems.forEach { (id, start) -> findViewById<View>(id).setOnClickListener { setDial(false, animate = false); openEditor(0, start) } }
         findViewById<View>(R.id.sortButton).setOnClickListener { showSortSheet() }
         findViewById<View>(R.id.moreButton).setOnClickListener { showMenu(it) }
 
@@ -77,6 +81,7 @@ class ListActivity : GatedActivity() {
 
     override fun onUnlocked() {
         store.purgeTrash(System.currentTimeMillis() - NoteStore.TRASH_RETENTION_MS)
+        store.cleanupAttachments()
         Snapshots.maybeRun(this, store)
         refresh()
         SyncManager.syncIfDue(this) { if (!isFinishing) refresh() }
@@ -87,43 +92,58 @@ class ListActivity : GatedActivity() {
         nav.menu.findItem(if (showArchive) R.id.nav_archive else R.id.nav_notes).isChecked = true
     }
 
-    private fun openEditor(id: Long, asList: Boolean = false) =
-        startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("checklist", asList))
+    /** [start] makes a new note begin with that action: "image", "drawing", "audio", "list" or "text". */
+    private fun openEditor(id: Long, start: String? = null) =
+        startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("start", start))
 
-    /** "+" opens a small chooser: a text note or a checklist. */
-    private fun showAddSheet() {
-        val sheet = BottomSheetDialog(this)
-        val pad = Palette.dp(this, 20)
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad) }
-        col.addView(TextView(this).apply {
-            setText(R.string.add_title); textSize = 20f; setTypeface(typeface, Typeface.BOLD)
-            setTextColor(getColor(R.color.on_surface)); setPadding(0, 0, 0, pad / 2)
-        })
-        val ripple = android.util.TypedValue().also { theme.resolveAttribute(android.R.attr.selectableItemBackground, it, true) }.resourceId
-        fun option(icon: Int, label: Int, asList: Boolean) = col.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
-            minimumHeight = Palette.dp(context, 56); setBackgroundResource(ripple); isClickable = true
-            addView(android.widget.ImageView(context).apply {
-                setImageResource(icon); setColorFilter(getColor(R.color.on_surface))
-                layoutParams = LinearLayout.LayoutParams(Palette.dp(context, 24), Palette.dp(context, 24)).apply { marginEnd = Palette.dp(context, 20) }
-            })
-            addView(TextView(context).apply { setText(label); textSize = 17f; setTextColor(getColor(R.color.on_surface)) })
-            setOnClickListener { sheet.dismiss(); openEditor(0, asList) }
-        })
-        option(R.drawable.ic_notes, R.string.add_text, false)
-        option(R.drawable.ic_checklist, R.string.add_list, true)
-        sheet.setContentView(col)
-        sheet.show()
+    private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
+    private var dialOpen = false
+
+    private val closeDial = object : androidx.activity.OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = setDial(false)
+    }
+
+    /** The "+" button fans out Image / Drawing / Audio / List / Text over a dimmed screen. */
+    internal fun setDial(open: Boolean, animate: Boolean = true) {
+        dialOpen = open
+        closeDial.isEnabled = open
+        val scrim = findViewById<View>(R.id.scrim); val dial = findViewById<View>(R.id.dial)
+        val fab = findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab)
+        fab.setImageResource(if (open) R.drawable.ic_close else R.drawable.ic_add)   // swap the icon; rotating would tilt the whole button
+        fab.contentDescription = getString(if (open) R.string.cd_close_menu else R.string.new_note)
+        val rise = Palette.dp(this, 24).toFloat()
+        if (!animate) {
+            scrim.visibility = if (open) View.VISIBLE else View.GONE; scrim.alpha = 1f
+            dial.visibility = if (open) View.VISIBLE else View.GONE
+            (dial as android.view.ViewGroup).let { g -> for (k in 0 until g.childCount) { g.getChildAt(k).alpha = 1f; g.getChildAt(k).translationY = 0f } }
+            return
+        }
+        if (open) {
+            scrim.alpha = 0f; scrim.visibility = View.VISIBLE; scrim.animate().alpha(1f).setDuration(180).start()
+            dial.visibility = View.VISIBLE
+            dialItems.forEachIndexed { i, (id, _) ->
+                findViewById<View>(id).apply {
+                    alpha = 0f; translationY = rise
+                    animate().alpha(1f).translationY(0f).setStartDelay(i * 35L).setDuration(160).start()
+                }
+            }
+        } else {
+            scrim.animate().alpha(0f).setDuration(140).withEndAction { if (!dialOpen) scrim.visibility = View.GONE }.start()
+            dialItems.forEach { (id, _) -> findViewById<View>(id).animate().alpha(0f).setStartDelay(0).setDuration(120).start() }
+            dial.postDelayed({ if (!dialOpen) dial.visibility = View.GONE }, 140)
+        }
     }
 
     private fun refresh() {
         findViewById<TextView>(R.id.screenTitle).setText(if (showArchive) R.string.nav_archive else R.string.nav_notes)
         findViewById<View>(R.id.fab).visibility = if (showArchive) View.GONE else View.VISIBLE
+        if (showArchive && dialOpen) setDial(false, animate = false)
         layoutManager.spanCount = if (Prefs.grid(this)) 2 else 1
         val all = store.list(showArchive, search.text.toString())
         val shown = Sorter.sort(colorFilter?.let { f -> all.filter { it.color == f } } ?: all, Prefs.sort(this))
         adapter.submit(shown, groupPinned = !showArchive,
-            pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others))
+            pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others),
+            attachments = store.attachmentsByNote())
 
         findViewById<View>(R.id.empty).visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
         val searching = search.text.isNotBlank() || colorFilter != null
