@@ -113,8 +113,9 @@ class NoteAdapter(
             h.audio.text = AttachmentFiles.duration(audios.sumOf { it.durationMs }) + if (audios.size > 1) " (×${audios.size})" else ""
             h.audio.visibility = View.VISIBLE
         } else h.audio.visibility = View.GONE
-        if (items.isNotEmpty()) {
-            h.progress.text = c.getString(R.string.checklist_progress, items.count { it.done }, items.size)
+        if (items.any { it.text.isNotBlank() }) {
+            val (total, done) = Checklist.counts(items)
+            h.progress.text = c.getString(R.string.checklist_progress, done, total)
             h.progress.visibility = View.VISIBLE
         } else h.progress.visibility = View.GONE
         if (n.reminderAt > 0) {
@@ -132,7 +133,8 @@ class NoteAdapter(
         val sb = SpannableStringBuilder()
         items.take(8).forEachIndexed { idx, item ->
             if (idx > 0) sb.append('\n')
-            val start = sb.length
+            if (item.level == 1) sb.append("\u2003\u2003")
+            val start = sb.length          // the strike-through begins after the indent, not inside it
             sb.append(if (item.done) "☑  " else "☐  ").append(item.text)
             if (item.done) {
                 sb.setSpan(StrikethroughSpan(), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)

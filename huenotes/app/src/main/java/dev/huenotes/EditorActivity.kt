@@ -143,7 +143,7 @@ class EditorActivity : GatedActivity() {
 
     private fun currentItems(): List<Checklist.Item> = (0 until list.childCount).map {
         val row = list.getChildAt(it)
-        Checklist.Item(row.findViewById<CheckBox>(R.id.check).isChecked, row.findViewById<EditText>(R.id.text).text.toString().trim())
+        Checklist.Item(row.findViewById<CheckBox>(R.id.check).isChecked, row.findViewById<EditText>(R.id.text).text.toString().trim(), row.tag as? Int ?: 0)
     }
 
     private fun current(): Note {
@@ -343,9 +343,8 @@ class EditorActivity : GatedActivity() {
         else getString(R.string.meta_edited, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.modifiedAt)))
         // A list is counted in items (and how many are done); a text note in words.
         val size = if (inChecklist()) {
-            val items = currentItems().filter { it.text.isNotBlank() }
-            val done = items.count { it.done }
-            resources.getQuantityString(R.plurals.item_count, items.size, items.size) +
+            val (total, done) = Checklist.counts(currentItems())
+            resources.getQuantityString(R.plurals.item_count, total, total) +
                 if (done > 0) "  ·  " + resources.getQuantityString(R.plurals.items_done, done, done) else ""
         } else {
             val words = bodyEdit.text.toString().trim().split(Regex("\\s+")).count { it.isNotBlank() }
@@ -372,40 +371,98 @@ class EditorActivity : GatedActivity() {
         renderMeta()
     }
 
+    private var applying = false      // true while we set the rows' states ourselves, so tick listeners stay quiet
+
     private fun showChecklist(items: List<Checklist.Item>) {
         bodyEdit.visibility = View.GONE; list.visibility = View.VISIBLE; list.removeAllViews()
-        items.forEach { addRow(it, -1, focus = false) }
-        if (items.isEmpty()) addRow(Checklist.Item(false, ""), -1, focus = false)
+        val rows = Checklist.normalize(items).ifEmpty { listOf(Checklist.Item(false, "")) }
+        rows.forEach { addRow(it, -1, focus = false) }
+        styleRows()
+    }
+
+    /** Writes [items] (same rows, new ticks/levels) back onto the existing rows, keeping what is being typed. */
+    private fun applyStates(items: List<Checklist.Item>) {
+        applying = true
+        items.forEachIndexed { i, it -> list.getChildAt(i).let { row -> row.tag = it.level; row.findViewById<CheckBox>(R.id.check).isChecked = it.done } }
+        applying = false
+        styleRows()
+        renderMeta()
+    }
+
+    /** Indent, guide line, bold parents, dash for half-done parents, strike-through, and the indent/outdent button. */
+    private fun styleRows() {
+        val items = currentItems()
+        val scale = Prefs.fontScale(this)
+        items.forEachIndexed { i, item ->
+            val row = list.getChildAt(i)
+            val text = row.findViewById<EditText>(R.id.text); val check = row.findViewById<CheckBox>(R.id.check)
+            val sub = item.level == 1
+            row.findViewById<View>(R.id.indentBox).layoutParams.width = if (sub) Palette.dp(this, 30) else 0
+            row.findViewById<View>(R.id.indentBox).requestLayout()
+            row.findViewById<View>(R.id.guide).visibility = if (sub) View.VISIBLE else View.GONE
+            text.textSize = (if (sub) 16f else 17f) * scale
+            text.setTypeface(null, if (Checklist.isParent(items, i)) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+            text.paintFlags = if (item.done) text.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG else text.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
+            text.alpha = if (item.done) 0.5f else 1f
+            check.setButtonDrawable(if (Checklist.half(items, i)) R.drawable.check_half else R.drawable.check_selector)
+            val btn = row.findViewById<android.widget.ImageButton>(R.id.indent)
+            // Sub-items always show "move out"; the row being typed in shows "make sub-item" (not on the very first row).
+            btn.visibility = if (sub || (i > 0 && text.hasFocus())) View.VISIBLE else View.GONE
+            btn.setImageResource(if (sub) R.drawable.ic_outdent else R.drawable.ic_indent)
+            btn.contentDescription = getString(if (sub) R.string.cd_outdent else R.string.cd_indent)
+        }
+    }
+
+    private fun focusRow(i: Int, atEnd: Boolean = true) {
+        val t = list.getChildAt(i.coerceIn(0, list.childCount - 1)).findViewById<EditText>(R.id.text)
+        t.requestFocus(); if (atEnd) t.setSelection(t.text.length)
     }
 
     private fun addRow(item: Checklist.Item, at: Int, focus: Boolean) {
         val row = LayoutInflater.from(this).inflate(R.layout.item_check, list, false)
+        row.tag = item.level
         val check = row.findViewById<CheckBox>(R.id.check); val text = row.findViewById<EditText>(R.id.text)
-        text.textSize = 17f * Prefs.fontScale(this)
         text.setText(item.text); check.isChecked = item.done
-        fun strike() {
-            text.paintFlags = if (check.isChecked) text.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
-            else text.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
-            text.alpha = if (check.isChecked) 0.5f else 1f
+        check.setOnCheckedChangeListener { _, checked ->
+            if (!applying) applyStates(Checklist.tick(currentItems(), list.indexOfChild(row), checked))
         }
-        strike(); check.setOnCheckedChangeListener { _, _ -> strike(); renderMeta() }
         text.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(e: Editable?) = renderMeta()
             override fun beforeTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
             override fun onTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
         })
+        text.setOnFocusChangeListener { _, _ -> if (list.indexOfChild(row) >= 0) styleRows() }
         text.setOnEditorActionListener { _, action, _ ->
-            if (action == EditorInfo.IME_ACTION_NEXT) { addRow(Checklist.Item(false, ""), list.indexOfChild(row) + 1, true); true } else false
-        }
-        text.setOnKeyListener { _, code, ev ->
-            if (code == KeyEvent.KEYCODE_DEL && ev.action == KeyEvent.ACTION_DOWN && text.text.isEmpty() && list.childCount > 1) {
-                val idx = list.indexOfChild(row); list.removeView(row); renderMeta()
-                (list.getChildAt((idx - 1).coerceAtLeast(0)).findViewById<EditText>(R.id.text)).requestFocus(); true
+            if (action == EditorInfo.IME_ACTION_NEXT) {
+                val (items, pos) = Checklist.insertBelow(currentItems(), list.indexOfChild(row))
+                addRow(items[pos], pos, focus = true)
+                applyStates(items)
+                true
             } else false
         }
-        row.findViewById<View>(R.id.remove).setOnClickListener { if (list.childCount > 1) list.removeView(row) else text.setText(""); renderMeta() }
+        text.setOnKeyListener { _, code, ev ->
+            if (code == KeyEvent.KEYCODE_DEL && ev.action == KeyEvent.ACTION_DOWN && text.text.isEmpty()) {
+                val i = list.indexOfChild(row); val items = currentItems()
+                if (items[i].level == 1) { applyStates(Checklist.outdent(items, i)); true }        // first Backspace moves it out
+                else if (list.childCount > 1) { removeRow(i); true } else false                    // then it deletes
+            } else false
+        }
+        row.findViewById<View>(R.id.indent).setOnClickListener {
+            val i = list.indexOfChild(row); val items = currentItems()
+            applyStates(if (items[i].level == 1) Checklist.outdent(items, i) else Checklist.indent(items, i))
+        }
+        row.findViewById<View>(R.id.remove).setOnClickListener {
+            if (list.childCount > 1) removeRow(list.indexOfChild(row)) else { text.setText(""); applyStates(currentItems()) }
+        }
         if (at < 0) list.addView(row) else list.addView(row, at)
         if (focus) text.requestFocus()
+    }
+
+    private fun removeRow(i: Int) {
+        val after = Checklist.remove(currentItems(), i)
+        list.removeViewAt(i)
+        applyStates(after)
+        focusRow(i - 1)
     }
 
     // ---- actions -----------------------------------------------------------------------------

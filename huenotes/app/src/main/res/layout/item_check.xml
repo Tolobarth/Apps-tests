@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="horizontal" android:gravity="center_vertical">
+    <!-- Empty for top-level rows; for sub-items it is the indent with a thin guide line at its right edge. -->
+    <FrameLayout android:id="@+id/indentBox" android:layout_width="0dp" android:layout_height="match_parent">
+        <View android:id="@+id/guide" android:layout_width="2dp" android:layout_height="match_parent"
+            android:layout_gravity="end" android:layout_marginEnd="6dp" android:background="@color/note_text_variant"
+            android:alpha="0.3" android:visibility="gone" />
+    </FrameLayout>
     <android.widget.CheckBox android:id="@+id/check" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:button="@drawable/check_selector" android:padding="8dp" />
     <EditText android:id="@+id/text" android:layout_width="0dp" android:layout_weight="1"
@@ -10,6 +15,9 @@
         android:textColor="@color/note_text" android:hint="@string/hint_item" android:textColorHint="@color/note_text_variant"
         android:inputType="textCapSentences" android:imeOptions="actionNext" android:singleLine="true"
         android:paddingTop="10dp" android:paddingBottom="10dp" />
+    <ImageButton android:id="@+id/indent" android:layout_width="40dp" android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_indent"
+        android:tint="@color/note_text_variant" android:visibility="gone" android:contentDescription="@string/cd_indent" />
     <ImageButton android:id="@+id/remove" android:layout_width="40dp" android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_close"
         android:tint="@color/note_text_variant" android:contentDescription="@string/cd_remove_item" />

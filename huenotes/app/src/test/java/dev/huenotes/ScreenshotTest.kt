@@ -39,9 +39,9 @@ class ScreenshotTest {
         val s = NoteStore(app)
         val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 0); set(Calendar.HOUR_OF_DAY, 18); set(Calendar.MINUTE, 30) }.timeInMillis
         s.save(Note(title = "Weekend trip", body = "Book the cabin, check train times and ask Sam about the car.", color = Note.COLORS[4], reminderAt = tomorrow))
-        s.save(Note(title = "Groceries", body = Checklist.serialize(listOf(
-            Checklist.Item(true, "Oat milk"), Checklist.Item(false, "Tomatoes"), Checklist.Item(false, "Sourdough"), Checklist.Item(true, "Coffee beans"))),
+        s.save(Note(title = "Groceries", body = "[ ] Bakery\n  [x] Sourdough\n  [ ] Croissants\n[ ] Dairy\n  [x] Oat milk\n  [ ] Butter\n[x] Coffee beans",
             checklist = true, color = Note.COLORS[3]))
+        s.save(Note(title = "Packing", body = "[ ] Documents\n  [ ] Passport\n  [ ] Tickets\n[ ] Charger", checklist = true, color = Note.COLORS[0]))
         s.save(Note(title = "Idea", body = "A notes app where colour is the first-class way to organise.", color = Note.COLORS[0], pinned = true))
         s.save(Note(title = "Book list", body = "Piranesi\nThe Dispossessed\nA Psalm for the Wild-Built\nBraiding Sweetgrass", color = Note.COLORS[5]))
         s.save(Note(title = "", body = "Call dentist tomorrow morning", color = Note.COLORS[1]))
@@ -129,6 +129,16 @@ class ScreenshotTest {
         (find(a.window.decorView, com.google.android.material.chip.Chip::class.java) as com.google.android.material.chip.Chip).performClick()
         shot("list_links", a)
     }
+
+    @Test fun subItemRowFocused() {
+        val id = NoteStore(app).list(false).first { it.title == "Groceries" }.id
+        val a = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup().get()
+        a.findViewById<ViewGroup>(R.id.checklist).getChildAt(3).findViewById<android.widget.EditText>(R.id.text).requestFocus()   // "Dairy": shows the indent button
+        shot("editor_subitems", a)
+    }
+
+    @Test @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun listTall() = shot("list_tall", Robolectric.buildActivity(ListActivity::class.java).setup().get())
 
     @Test fun speedDial() {
         val a = Robolectric.buildActivity(ListActivity::class.java).setup().get()

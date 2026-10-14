@@ -31,7 +31,7 @@
     <string name="hint_item">List item</string>
     <string name="meta_new">New note</string>
     <string name="meta_edited">Edited %1$s</string>
-    <string name="checklist_progress">%1$d/%2$d done</string>
+    <string name="checklist_progress">%1$d of %2$d done</string>
     <string name="action_share">Share</string>
     <string name="action_archive">Archive</string>
     <string name="action_unarchive">Unarchive</string>
@@ -187,6 +187,8 @@
     <string name="attach_save_failed">Couldn’t save the file</string>
     <string name="share_chooser">Share via</string>
     <string name="cd_attachment_options">Attachment options</string>
+    <string name="cd_indent">Make sub-item</string>
+    <string name="cd_outdent">Move out of sub-items</string>
     <string name="add_title">Add</string>
     <string name="add_text">Text</string>
     <string name="add_list">List</string>

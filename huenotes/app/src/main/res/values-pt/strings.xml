@@ -187,6 +187,8 @@
     <string name="attach_save_failed">Não foi possível salvar o arquivo</string>
     <string name="share_chooser">Compartilhar via</string>
     <string name="cd_attachment_options">Opções do anexo</string>
+    <string name="cd_indent">Tornar subitem</string>
+    <string name="cd_outdent">Tirar dos subitens</string>
     <string name="add_title">Adicionar</string>
     <string name="add_text">Texto</string>
     <string name="add_list">Lista</string>

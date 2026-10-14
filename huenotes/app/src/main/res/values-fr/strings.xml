@@ -187,6 +187,8 @@
     <string name="attach_save_failed">Impossible d’enregistrer le fichier</string>
     <string name="share_chooser">Partager via</string>
     <string name="cd_attachment_options">Options de la pièce jointe</string>
+    <string name="cd_indent">Mettre en sous-élément</string>
+    <string name="cd_outdent">Sortir des sous-éléments</string>
     <string name="add_title">Ajouter</string>
     <string name="add_text">Texte</string>
     <string name="add_list">Liste</string>

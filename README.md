@@ -105,3 +105,13 @@ list to them. Sharing a link from a browser to **HueNotes** saves it (any shared
 A link note is simply a note whose first line is a web address, so backup and sync need no changes.
 
 The share-sheet entry's label is a string (`share_target_label`) that spells out the app name: update it when renaming.
+
+### v0.6
+
+Checklist items can have **sub-items** (one level). Each row being typed in shows an indent button; sub-items show a guide line
+and a "move out" button. Ticking a parent ticks its sub-items; ticking the last open sub-item ticks the parent; unticking any
+sub-item unticks it; a parent with some sub-items done shows a dash. Enter on a sub-item adds a sibling, Enter on a parent adds
+a top-level row after its group, Backspace on an empty sub-item moves it out and then deletes it, and removing a parent keeps its
+sub-items as top-level rows. Cards show sub-items indented and "3 of 7 done"; the editor line reads "7 items · 3 done"; shared
+text keeps the indentation. Stored as plain text (two spaces before a sub-item), so old lists, backups and sync are unchanged.
+The rules live in `Checklist.kt` and are covered by `ChecklistTest`; `SubItemUiTest` drives the real editor.

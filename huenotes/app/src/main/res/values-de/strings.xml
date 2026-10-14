@@ -187,6 +187,8 @@
     <string name="attach_save_failed">Datei konnte nicht gespeichert werden</string>
     <string name="share_chooser">Teilen über</string>
     <string name="cd_attachment_options">Anhangoptionen</string>
+    <string name="cd_indent">Als Unterpunkt einrücken</string>
+    <string name="cd_outdent">Aus Unterpunkten herausnehmen</string>
     <string name="add_title">Hinzufügen</string>
     <string name="add_text">Text</string>
     <string name="add_list">Liste</string>
