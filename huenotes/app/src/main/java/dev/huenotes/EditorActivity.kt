@@ -77,7 +77,7 @@ class EditorActivity : GatedActivity() {
         val start = if (note.id == 0L) intent.getStringExtra("start") else null
         val startAsList = start == "list"
         if (startAsList) note = note.copy(checklist = true)
-        setContentView(R.layout.activity_editor)
+        setContentView(R.layout.activity_editor); Palette.edgeToEdge(this, findViewById(R.id.editorRoot))
 
         titleEdit = findViewById(R.id.titleEdit); bodyEdit = findViewById(R.id.bodyEdit)
         list = findViewById(R.id.checklist); swatches = findViewById(R.id.swatches)

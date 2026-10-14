@@ -10,13 +10,13 @@ android {
         }
     }
     namespace = "dev.huenotes"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         applicationId = "dev.huenotes"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 7
-        versionName = "0.7"
+        targetSdk = 36
+        versionCode = 8
+        versionName = "0.8"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
@@ -30,7 +30,7 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

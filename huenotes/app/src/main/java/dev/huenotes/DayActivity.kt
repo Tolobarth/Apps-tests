@@ -19,7 +19,7 @@ class DayActivity : GatedActivity() {
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
         store = NoteStore(this)
-        setContentView(R.layout.activity_day)
+        setContentView(R.layout.activity_day); Palette.edgeToEdge(this, findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0))
         findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
         adapter = NoteAdapter({ startActivity(Intent(this, EditorActivity::class.java).putExtra("id", it.id)) })
         adapter.showTimeOnly = true

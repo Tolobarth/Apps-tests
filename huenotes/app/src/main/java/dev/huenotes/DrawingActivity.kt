@@ -53,7 +53,7 @@ class DrawingActivity : GatedActivity() {
         root.addView(bar, LinearLayout.LayoutParams(-1, Palette.dp(this, 56)))
         root.addView(card, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(m, 0, m, m) })
         root.addView(scroll, LinearLayout.LayoutParams(-1, -2).apply { setMargins(m, 0, m, m) })
-        setContentView(root)
+        setContentView(root); Palette.edgeToEdge(this, root)
         renderTools()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (canvas.hasContent()) confirmDiscard() else finish() }

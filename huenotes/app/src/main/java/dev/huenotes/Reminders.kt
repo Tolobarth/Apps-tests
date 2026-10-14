@@ -21,8 +21,8 @@ object Reminders {
         val am = c.getSystemService(AlarmManager::class.java)
         am.cancel(pending(c, n.id))
         if (n.reminderAt <= System.currentTimeMillis()) return
-        // Inexact alarm: avoids needing the exact-alarm special access grant.
-        am.set(AlarmManager.RTC_WAKEUP, n.reminderAt, pending(c, n.id))
+        // Inexact but fires in Doze: needs no exact-alarm special access grant.
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, n.reminderAt, pending(c, n.id))
     }
 
     fun cancel(c: Context, id: Long) = c.getSystemService(AlarmManager::class.java).cancel(pending(c, id))
@@ -54,7 +54,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        if (i.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (i.action != Intent.ACTION_BOOT_COMPLETED && i.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         NoteStore(c).upcomingReminders(System.currentTimeMillis()).forEach { Reminders.schedule(c, it) }
     }
 }

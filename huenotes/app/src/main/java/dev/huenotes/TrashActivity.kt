@@ -16,7 +16,7 @@ class TrashActivity : GatedActivity() {
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
         store = NoteStore(this)
-        setContentView(R.layout.activity_trash)
+        setContentView(R.layout.activity_trash); Palette.edgeToEdge(this, findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0))
         val tb = findViewById<MaterialToolbar>(R.id.toolbar)
         tb.setNavigationOnClickListener { finish() }
         tb.menu.add(0, 1, 0, R.string.action_empty_trash).setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)

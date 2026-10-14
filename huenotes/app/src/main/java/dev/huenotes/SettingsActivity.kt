@@ -40,7 +40,7 @@ class SettingsActivity : GatedActivity() {
 
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
-        setContentView(R.layout.activity_settings)
+        setContentView(R.layout.activity_settings); Palette.edgeToEdge(this, findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0))
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
         list = findViewById(R.id.list)
     }

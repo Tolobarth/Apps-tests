@@ -9,6 +9,9 @@ import android.view.Window
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.graphics.ColorUtils
 
 object Palette {
@@ -23,14 +26,22 @@ object Palette {
 
     fun dp(c: Context, v: Int) = (v * c.resources.displayMetrics.density).toInt()
 
-    /** Paints status/navigation bars to [color] with matching icon contrast. */
-    @Suppress("DEPRECATION")
+    /** Picks dark or light system-bar icons to contrast with [color] (bars themselves are transparent, edge-to-edge). */
     fun tintBars(w: Window, color: Int) {
-        w.statusBarColor = color; w.navigationBarColor = color
-        var f = w.decorView.systemUiVisibility
-        f = if (ColorUtils.calculateLuminance(color) > 0.5) f or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        else f and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
-        w.decorView.systemUiVisibility = f
+        val light = ColorUtils.calculateLuminance(color) > 0.5
+        val c = WindowCompat.getInsetsController(w, w.decorView)
+        c.isAppearanceLightStatusBars = light; c.isAppearanceLightNavigationBars = light
+    }
+
+    /** Draws behind the system bars and pads [root] by the bar, cutout and keyboard insets so content stays reachable. */
+    fun edgeToEdge(a: android.app.Activity, root: View) {
+        WindowCompat.setDecorFitsSystemWindows(a.window, false)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, ins ->
+            val b = ins.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.ime())
+            v.setPadding(b.left, b.top, b.right, b.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     /** A round colour swatch; [color]==null draws the "all" ring. Shows a check when [selected]. */

@@ -39,7 +39,7 @@ class ListActivity : GatedActivity() {
         super.onCreate(s)
         store = NoteStore(this)
         if (android.os.Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 0)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main); Palette.edgeToEdge(this, findViewById(R.id.mainRoot))
 
         adapter = NoteAdapter({ openEditor(it.id) }, { n, v -> showNoteMenu(n, v) })
         adapter.storage = store.storage
