@@ -50,3 +50,17 @@ REA tools directly.
    Use `--help` on any command for its exact arguments, and `--format json`
    for machine-readable evidence.
 4. Record findings, with evidence, in `reports/<package>/report.md`.
+
+## HueNotes (clean-room clone)
+
+`docs/clean-room-spec.md` describes ColorNote-style behaviour as observed
+structurally with REA; `huenotes/` is an original Kotlin implementation
+(notes, checklist lines, colours, archive, search, reminders, share).
+
+```sh
+export ANDROID_HOME=/opt/android-sdk   # SDK with platform 34 + build-tools 34.0.0
+cd huenotes && gradle :app:assembleDebug
+```
+
+Not yet done: password lock, calendar/Today view, widgets, backup. Not run on a
+device or emulator yet, only compiled and statically inspected.
