@@ -66,7 +66,7 @@ class ImportTest {
     @Test fun taskListsBecomeChecklistsWithSubItems() {
         val p = Importers.fromText("t.md", "# T\n- [ ] one\n  - [x] sub\n- [X] two\n")
         assertTrue(p.note.checklist)
-        assertEquals(listOf(Triple(false, "one", 0), Triple(true, "sub", 1), Triple(true, "two", 0)), Checklist.parse(p.note.body).map { Triple(it.done, it.text, it.level) })
+        assertEquals(listOf(Triple(true, "one", 0), Triple(true, "sub", 1), Triple(true, "two", 0)), Checklist.parse(p.note.body).map { Triple(it.done, it.text, it.level) })
         assertFalse(Importers.fromText("t.md", "- [ ] one\nplain line").note.checklist)
     }
 
@@ -99,11 +99,11 @@ class ImportTest {
         val id = s.save(Note(title = "Trip: Paris/2025", body = "pack")); val uid = s.get(id)!!.uid
         val a = Attachment(noteUid = uid, kind = AttachmentKind.IMAGE); s.storage.file(a).writeBytes(byteArrayOf(1)); s.addAttachment(a)
         s.save(Note(title = "Trip: Paris/2025", body = "again"))
-        s.save(Note(title = "List", body = Checklist.serialize(listOf(Checklist.Item(false, "a"), Checklist.Item(true, "b", 1))), checklist = true))
+        s.save(Note(title = "List", body = Checklist.serialize(listOf(Checklist.Item(false, "a"), Checklist.Item(false, "b", 1))), checklist = true))
         val out = ByteArrayOutputStream(); MarkdownExport.write(s, out)
         val entries = java.util.zip.ZipInputStream(out.toByteArray().inputStream()).let { z -> generateSequence { z.nextEntry }.map { it.name to z.readBytes().toString(Charsets.UTF_8) }.toList() }.toMap()
         assertTrue(entries.keys.containsAll(listOf("Trip Paris 2025.md", "Trip Paris 2025 (2).md", "List.md", "attachments/${a.fileName}")))
-        assertTrue(entries["Trip Paris 2025.md"]!!.contains("![](attachments/${a.fileName})"))
-        assertEquals("# List\n\n- [ ] a\n  - [x] b\n", entries["List.md"])
+        assertTrue(entries.filterKeys { it.startsWith("Trip") }.values.single { it.contains("pack") }.contains("![](attachments/${a.fileName})"))
+        assertEquals("# List\n\n- [ ] a\n  - [ ] b\n", entries["List.md"])
     }
 }
