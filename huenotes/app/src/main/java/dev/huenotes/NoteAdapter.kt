@@ -57,6 +57,7 @@ class NoteAdapter(
         val thumb: android.widget.ImageView = v.findViewById(R.id.thumb)
         val content: View = v.findViewById(R.id.content)
         val audio: TextView = v.findViewById(R.id.audio)
+        val link: TextView = v.findViewById(R.id.link)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
         val progress: TextView = v.findViewById(R.id.progress)
@@ -94,11 +95,16 @@ class NoteAdapter(
         h.title.text = if (n.pinned && n.title.isNotBlank()) "📌 ${n.title}" else n.title
         h.title.visibility = if (n.title.isBlank()) View.GONE else View.VISIBLE
         val items = if (n.checklist) Checklist.parse(n.body) else emptyList()
-        val preview = if (n.checklist) checklistPreview(c, items) else n.body.trim()
+        val linkUrl = Links.linkOf(n)
+        val preview = if (n.checklist) checklistPreview(c, items) else if (linkUrl != null) Links.restOf(n.body) else n.body.trim()
+        if (linkUrl != null) {
+            h.link.text = Links.domain(linkUrl); h.link.visibility = View.VISIBLE
+            h.link.setOnClickListener { Links.open(c, linkUrl) }
+        } else { h.link.visibility = View.GONE; h.link.setOnClickListener(null); h.link.isClickable = false }
         h.body.text = preview
         h.body.visibility = if (preview.isEmpty()) View.GONE else View.VISIBLE
         val atts = attachments[n.uid].orEmpty()
-        if (n.title.isBlank() && preview.isEmpty() && atts.isEmpty()) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
+        if (n.title.isBlank() && preview.isEmpty() && atts.isEmpty() && linkUrl == null) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
         val visual = atts.firstOrNull { it.kind != AttachmentKind.AUDIO }
         val bmp = visual?.let { v -> storage?.let { AttachmentFiles.thumb(it.file(v), 480) } }
         if (bmp != null) { h.thumb.setImageBitmap(bmp); h.thumb.visibility = View.VISIBLE } else { h.thumb.setImageDrawable(null); h.thumb.visibility = View.GONE }
@@ -117,7 +123,7 @@ class NoteAdapter(
             else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(d)
             h.reminder.visibility = View.VISIBLE
         } else h.reminder.visibility = View.GONE
-        val anyText = listOf(h.title, h.body, h.progress, h.audio, h.reminder).any { it.visibility == View.VISIBLE }
+        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.reminder).any { it.visibility == View.VISIBLE }
         h.content.visibility = if (anyText) View.VISIBLE else View.GONE
     }
 

@@ -8,8 +8,8 @@
         <ImageView android:id="@+id/img" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:adjustViewBounds="true" android:maxHeight="360dp" android:minHeight="96dp"
             android:scaleType="fitCenter" android:importantForAccessibility="no" />
-        <ImageButton android:id="@+id/remove" android:layout_width="36dp" android:layout_height="36dp"
+        <ImageButton android:id="@+id/more" android:layout_width="36dp" android:layout_height="36dp"
             android:layout_gravity="top|end" android:layout_margin="8dp" android:background="@drawable/scrim_circle"
-            android:src="@drawable/ic_close" android:tint="#FFFFFF" android:contentDescription="@string/cd_remove_attachment" />
+            android:src="@drawable/ic_more" android:tint="#FFFFFF" android:contentDescription="@string/cd_attachment_options" />
     </FrameLayout>
 </com.google.android.material.card.MaterialCardView>

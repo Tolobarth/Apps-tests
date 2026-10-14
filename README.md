@@ -90,3 +90,18 @@ app-data folder as notes: files are uploaded before the notes file, and unrefere
 
 Known limits: the JSON backup and the daily snapshots contain note text only, not attachments (use Google sync to keep
 them safe); camera capture, microphone recording and audio playback are not covered by automated tests.
+
+### v0.5
+
+Each photo, drawing and voice note has a ⋮ menu: **Share** (Android share sheet, so Telegram, WhatsApp and any other app;
+the file is given a readable name such as "Weekend trip - Photo - 2026-10-14 15.30.jpg"), **Save to phone**
+(Pictures/HueNotes for photos and drawings, Music/HueNotes for voice notes; on Android 9 and older a save dialog asks where)
+and **Remove**. Sharing a whole note sends its text together with its attachments.
+
+"+" gained a **Link** line: paste or type an address (a copied link is filled in), optionally a title; the page title is
+looked up in the background when you leave it empty (Settings → Notes → Fetch link titles, on by default; it contacts
+that website). Link notes show the site name on their card and open the page when tapped; a **Links** chip filters the
+list to them. Sharing a link from a browser to **HueNotes** saves it (any shared text is saved as a note).
+A link note is simply a note whose first line is a web address, so backup and sync need no changes.
+
+The share-sheet entry's label is a string (`share_target_label`) that spells out the app name: update it when renaming.

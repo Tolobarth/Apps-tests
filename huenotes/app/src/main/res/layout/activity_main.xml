@@ -70,7 +70,7 @@
     <View android:id="@+id/scrim" android:layout_width="match_parent" android:layout_height="match_parent"
         android:background="@color/scrim" android:visibility="gone" android:clickable="true" android:focusable="true" />
     <LinearLayout android:id="@+id/dial" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="168dp"
+        android:layout_gravity="bottom|end" android:layout_marginEnd="20dp" android:layout_marginBottom="164dp"
         android:orientation="vertical" android:gravity="end" android:visibility="gone">
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/dialImage" android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -83,6 +83,10 @@
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/dialAudio" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/add_audio" app:icon="@drawable/ic_mic"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialLink" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_link" app:icon="@drawable/ic_link"
             app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/dialList" android:layout_width="wrap_content" android:layout_height="wrap_content"

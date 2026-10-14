@@ -31,6 +31,7 @@ class ListActivity : GatedActivity() {
     private lateinit var nav: BottomNavigationView
     private var showArchive = false
     private var colorFilter: Int? = null
+    private var linksOnly = false
 
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
@@ -63,7 +64,9 @@ class ListActivity : GatedActivity() {
         onBackPressedDispatcher.addCallback(this, closeDial)
         findViewById<View>(R.id.fab).setOnClickListener { setDial(!dialOpen) }
         findViewById<View>(R.id.scrim).setOnClickListener { setDial(false) }
-        dialItems.forEach { (id, start) -> findViewById<View>(id).setOnClickListener { setDial(false, animate = false); openEditor(0, start) } }
+        dialItems.forEach { (id, start) ->
+            findViewById<View>(id).setOnClickListener { setDial(false, animate = false); if (start == "link") showLinkDialog() else openEditor(0, start) }
+        }
         findViewById<View>(R.id.sortButton).setOnClickListener { showSortSheet() }
         findViewById<View>(R.id.moreButton).setOnClickListener { showMenu(it) }
 
@@ -96,7 +99,7 @@ class ListActivity : GatedActivity() {
     private fun openEditor(id: Long, start: String? = null) =
         startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("start", start))
 
-    private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
+    private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialLink to "link", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
     private var dialOpen = false
 
     private val closeDial = object : androidx.activity.OnBackPressedCallback(false) {
@@ -140,19 +143,26 @@ class ListActivity : GatedActivity() {
         if (showArchive && dialOpen) setDial(false, animate = false)
         layoutManager.spanCount = if (Prefs.grid(this)) 2 else 1
         val all = store.list(showArchive, search.text.toString())
-        val shown = Sorter.sort(colorFilter?.let { f -> all.filter { it.color == f } } ?: all, Prefs.sort(this))
+        val byColour = colorFilter?.let { f -> all.filter { it.color == f } } ?: all
+        val shown = Sorter.sort(if (linksOnly) byColour.filter { Links.isLinkNote(it) } else byColour, Prefs.sort(this))
         adapter.submit(shown, groupPinned = !showArchive,
             pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others),
             attachments = store.attachmentsByNote())
 
         findViewById<View>(R.id.empty).visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
         val searching = search.text.isNotBlank() || colorFilter != null
+        val noLinks = linksOnly && !searching
         findViewById<TextView>(R.id.emptyTitle).setText(
-            if (searching) R.string.empty_search_title else if (showArchive) R.string.empty_archive_title else R.string.empty_notes_title)
+            if (noLinks) R.string.empty_links_title else if (searching) R.string.empty_search_title else if (showArchive) R.string.empty_archive_title else R.string.empty_notes_title)
         findViewById<TextView>(R.id.emptyBody).setText(
-            if (searching) R.string.empty_search_body else if (showArchive) R.string.empty_archive_body else R.string.empty_notes_body)
+            if (noLinks) R.string.empty_links_body else if (searching) R.string.empty_search_body else if (showArchive) R.string.empty_archive_body else R.string.empty_notes_body)
 
         filterRow.removeAllViews()
+        filterRow.addView(Chip(this).apply {
+            setText(R.string.filter_links); isCheckable = true; isChecked = linksOnly
+            setChipIconResource(R.drawable.ic_link); isChipIconVisible = true; isCheckedIconVisible = false
+            setOnClickListener { linksOnly = !linksOnly; refresh() }
+        })
         filterRow.addView(Palette.swatch(this, null, colorFilter == null, getString(R.string.filter_all_colours)) { colorFilter = null; refresh() })
         Note.COLORS.forEach { c ->
             filterRow.addView(Palette.swatch(this, c, colorFilter == c, getString(R.string.filter_by_colour)) {
@@ -190,7 +200,7 @@ class ListActivity : GatedActivity() {
             when (it.itemId) {
                 1 -> { store.setPinned(n.id, !n.pinned); refresh() }
                 2 -> archive(n, !n.archived)
-                3 -> shareNote(this, n)
+                3 -> shareNote(this, n, store)
                 4 -> trash(n)
             }
             true
@@ -206,6 +216,47 @@ class ListActivity : GatedActivity() {
             startActivity(Intent(this, if (it.itemId == 1) TrashActivity::class.java else SettingsActivity::class.java)); true
         }
         pm.show()
+    }
+
+    // ---- save a link -----------------------------------------------------------------------------
+
+    private fun clipboardUrl(): String? = try {
+        (getSystemService(android.content.ClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(this)?.toString())?.let { Links.firstUrl(it) }
+    } catch (_: Exception) { null }
+
+    /** "+ → Link": paste or type an address (optional title); a copied link is filled in for you. */
+    private fun showLinkDialog() {
+        val pad = Palette.dp(this, 20)
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, Palette.dp(context, 8), pad, 0) }
+        val urlBox = com.google.android.material.textfield.TextInputLayout(this).apply { hint = getString(R.string.link_hint_url) }
+        val url = com.google.android.material.textfield.TextInputEditText(urlBox.context).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI; setSingleLine()
+        }
+        urlBox.addView(url)
+        val titleBox = com.google.android.material.textfield.TextInputLayout(this).apply { hint = getString(R.string.link_hint_title) }
+        val title = com.google.android.material.textfield.TextInputEditText(titleBox.context).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES; setSingleLine()
+        }
+        titleBox.addView(title)
+        col.addView(urlBox); col.addView(titleBox)
+        clipboardUrl()?.let { url.setText(it); url.selectAll() }
+        val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.link_dialog_title).setView(col)
+            .setPositiveButton(R.string.btn_save, null).setNegativeButton(R.string.btn_cancel, null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val address = Links.normalize(url.text.toString())
+                if (address == null) urlBox.error = getString(R.string.link_invalid)
+                else { saveLink(address, title.text.toString().trim()); dialog.dismiss() }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun saveLink(address: String, title: String) {
+        val id = store.save(Note(title = title, body = address, color = Prefs.defaultColor(this)))
+        if (title.isBlank()) Links.fetchTitleAsync(this, id, address) { if (!isFinishing) refresh() }
+        refresh()
+        Snackbar.make(findViewById(R.id.mainRoot), R.string.link_saved, Snackbar.LENGTH_SHORT).setAnchorView(nav).show()
     }
 
     // ---- sort & view sheet ---------------------------------------------------------------------

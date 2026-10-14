@@ -64,6 +64,9 @@ object Prefs {
     fun lastSync(c: Context) = p(c).getLong("lastSync", 0)
     fun setLastSync(c: Context, v: Long) = p(c).edit().putLong("lastSync", v).apply()
 
+    fun fetchLinkTitles(c: Context) = p(c).getBoolean("linkTitles", true)
+    fun setFetchLinkTitles(c: Context, v: Boolean) = p(c).edit().putBoolean("linkTitles", v).apply()
+
     fun autoSnapshots(c: Context) = p(c).getBoolean("snapshots", true)
     fun setAutoSnapshots(c: Context, v: Boolean) = p(c).edit().putBoolean("snapshots", v).apply()
     fun lastSnapshot(c: Context) = p(c).getLong("lastSnapshot", 0)

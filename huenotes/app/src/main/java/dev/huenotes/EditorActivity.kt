@@ -46,6 +46,14 @@ class EditorActivity : GatedActivity() {
     private lateinit var meta: TextView
     private lateinit var toolbar: MaterialToolbar
     private lateinit var attachBox: LinearLayout
+    private lateinit var linkChip: Chip
+    private var pendingSave: Pair<Attachment, String>? = null
+    private val saveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
+        val (a, name) = pendingSave ?: return@registerForActivityResult
+        pendingSave = null
+        if (uri != null) try { AttachmentExport.copyToUri(this, store.storage.file(a), uri); Toast.makeText(this, getString(R.string.attach_saved, name), Toast.LENGTH_LONG).show() }
+        catch (e: Exception) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show() }
+    }
     private var note = Note()
     private var deleted = false
     private val attachments = ArrayList<Attachment>()
@@ -99,7 +107,7 @@ class EditorActivity : GatedActivity() {
         toolbar.setOnMenuItemClickListener {
             when (it.itemId) {
                 0 -> { note = note.copy(pinned = !note.pinned); applyColor() }
-                1 -> shareNote(this, current())
+                1 -> shareNote(this, current(), store)
                 2 -> archive()
                 3 -> confirmDelete()
             }
@@ -110,6 +118,8 @@ class EditorActivity : GatedActivity() {
         chip.setOnClickListener { quickReminders() }
         chip.setOnCloseIconClickListener { note = note.copy(reminderAt = 0); renderMeta() }
         attachBox = findViewById(R.id.attachments)
+        linkChip = findViewById(R.id.linkChip)
+        linkChip.setOnClickListener { Links.linkOf(current().body)?.let { Links.open(this, it) } }
         attachments.addAll(store.attachmentsFor(note.uid))
         renderAttachments()
         findViewById<View>(R.id.imageButton).setOnClickListener { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
@@ -241,7 +251,7 @@ class EditorActivity : GatedActivity() {
         val bmp = AttachmentFiles.thumb(store.storage.file(a), 1024)
         if (bmp != null) img.setImageBitmap(bmp) else img.setBackgroundColor(getColor(R.color.outline))
         v.setOnClickListener { if (a.kind == AttachmentKind.DRAWING) launchDrawing(a) else viewImage(a) }
-        v.findViewById<View>(R.id.remove).setOnClickListener { confirmRemove(a) }
+        v.findViewById<View>(R.id.more).setOnClickListener { showAttachmentMenu(it, a) }
         return v
     }
 
@@ -261,8 +271,35 @@ class EditorActivity : GatedActivity() {
                 time.text = if (dur > 0) AttachmentFiles.duration(pos.toLong()) + " / " + AttachmentFiles.duration(dur.toLong()) else AttachmentFiles.duration(a.durationMs)
             }
         }
-        v.findViewById<View>(R.id.remove).setOnClickListener { confirmRemove(a) }
+        v.findViewById<View>(R.id.more).setOnClickListener { showAttachmentMenu(it, a) }
         return v
+    }
+
+    private fun showAttachmentMenu(anchor: View, a: Attachment) {
+        android.widget.PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, R.string.action_share); menu.add(0, 2, 1, R.string.attach_save); menu.add(0, 3, 2, R.string.attach_remove)
+            setOnMenuItemClickListener {
+                when (it.itemId) { 1 -> shareAttachment(a); 2 -> saveAttachment(a); 3 -> confirmRemove(a) }
+                true
+            }
+            show()
+        }
+    }
+
+    private fun shareAttachment(a: Attachment) {
+        val uri = AttachmentExport.stage(this, store, a, titleEdit.text.toString())
+        if (uri == null) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show(); return }
+        startActivity(Intent.createChooser(AttachmentExport.shareIntent(listOf(uri to a.kind.mime), null, null), getString(R.string.share_chooser)))
+    }
+
+    /** Android 10+: straight into Pictures/HueNotes or Music/HueNotes. Older Android: the person picks the place. */
+    private fun saveAttachment(a: Attachment) {
+        val file = store.storage.file(a)
+        if (!file.exists()) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show(); return }
+        val name = AttachmentExport.friendlyName(a, titleEdit.text.toString())
+        if (android.os.Build.VERSION.SDK_INT < 29) { pendingSave = a to name; saveLauncher.launch(name); return }
+        try { Toast.makeText(this, getString(R.string.attach_saved, AttachmentExport.saveToPhone(this, file, name, a.kind)), Toast.LENGTH_LONG).show() }
+        catch (e: Exception) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show() }
     }
 
     private fun viewImage(a: Attachment) {
@@ -310,6 +347,8 @@ class EditorActivity : GatedActivity() {
             chip.text = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.reminderAt))
             chip.visibility = View.VISIBLE
         } else chip.visibility = View.GONE
+        val url = if (inChecklist()) null else Links.linkOf(bodyEdit.text.toString())
+        if (url != null) { linkChip.text = getString(R.string.link_open) + " · " + Links.domain(url); linkChip.visibility = View.VISIBLE } else linkChip.visibility = View.GONE
     }
 
     // ---- checklist ---------------------------------------------------------------------------

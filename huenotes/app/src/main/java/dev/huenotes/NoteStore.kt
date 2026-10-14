@@ -95,6 +95,12 @@ class NoteStore(
         notifyChanged()
     }
 
+    /** Fills in a title only if the note still has none (used for fetched page titles). */
+    fun setTitleIfBlank(id: Long, title: String) {
+        val n = writableDatabase.update("notes", ContentValues().apply { put("title", title); put("sync_at", System.currentTimeMillis()) }, "id=? AND title=''", arrayOf(id.toString()))
+        if (n > 0) notifyChanged()
+    }
+
     fun setArchived(id: Long, v: Boolean) = flag(id, "archived", if (v) 1 else 0)
     fun setPinned(id: Long, v: Boolean) = flag(id, "pinned", if (v) 1 else 0)
     fun trash(id: Long) = flag(id, "deleted_at", System.currentTimeMillis())

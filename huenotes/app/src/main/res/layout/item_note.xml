@@ -13,6 +13,12 @@
             <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="17sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end"
                 android:textColor="@color/note_text" />
+            <TextView android:id="@+id/link" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" android:drawablePadding="6dp" android:gravity="center_vertical"
+                android:drawableStart="@drawable/ic_link" android:drawableTint="@color/note_text"
+                android:textSize="13sp" android:textStyle="bold" android:textColor="@color/note_text"
+                android:maxLines="1" android:ellipsize="end" android:background="?attr/selectableItemBackground"
+                android:visibility="gone" />
             <TextView android:id="@+id/body" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp" android:textSize="14sp" android:lineSpacingMultiplier="1.15"
                 android:maxLines="8" android:ellipsize="end" android:textColor="@color/note_text_variant" />

@@ -91,6 +91,7 @@ class SettingsActivity : GatedActivity() {
             choose(R.string.settings_default_screen, screens, Prefs.defaultScreen(this)) { Prefs.setDefaultScreen(this, it); render() }
         }
         switchRow(getString(R.string.settings_spell), getString(R.string.settings_spell_sum), Prefs.suggestions(this)) { Prefs.setSuggestions(this, it) }
+        switchRow(getString(R.string.settings_link_titles), getString(R.string.settings_link_titles_sum), Prefs.fetchLinkTitles(this)) { Prefs.setFetchLinkTitles(this, it) }
 
         section(R.string.settings_calendar)
         row(getString(R.string.settings_first_day), days[dayValues.indexOf(Prefs.firstDay(this)).coerceAtLeast(0)]) {

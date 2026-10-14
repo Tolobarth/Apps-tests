@@ -19,8 +19,8 @@
             <TextView android:id="@+id/time" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="2dp" android:textSize="12sp" android:textColor="@color/note_text_variant" />
         </LinearLayout>
-        <ImageButton android:id="@+id/remove" android:layout_width="40dp" android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_close"
-            android:tint="@color/note_text_variant" android:contentDescription="@string/cd_remove_attachment" />
+        <ImageButton android:id="@+id/more" android:layout_width="40dp" android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_more"
+            android:tint="@color/note_text_variant" android:contentDescription="@string/cd_attachment_options" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
