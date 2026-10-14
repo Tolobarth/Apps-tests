@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="action_history">Historique des versions</string>
+    <string name="history_empty">Aucune version antérieure pour l’instant. Les versions sont enregistrées quand vous modifiez une note.</string>
+    <string name="history_restore">Restaurer cette version</string>
+    <string name="history_restored">Version restaurée</string>
+    <string name="history_close">Fermer</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_archive">Archive</string>
     <string name="nav_calendar">Calendrier</string>

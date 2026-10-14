@@ -104,12 +104,14 @@ class EditorActivity : GatedActivity() {
             .forEach { (id, t, icon) ->
                 toolbar.menu.add(0, id, id, t).setIcon(icon).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
             }
+        toolbar.menu.add(0, 4, 4, R.string.action_history).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         toolbar.setOnMenuItemClickListener {
             when (it.itemId) {
                 0 -> { note = note.copy(pinned = !note.pinned); applyColor() }
                 1 -> shareNote(this, current(), store)
                 2 -> archive()
                 3 -> confirmDelete()
+                4 -> showHistory()
             }
             true
         }
@@ -166,6 +168,43 @@ class EditorActivity : GatedActivity() {
     }
 
     override fun onDestroy() { super.onDestroy(); stopRecording(save = false) }
+
+    // ---- version history ---------------------------------------------------------------------
+
+    private fun showHistory() {
+        saveNow()
+        val versions = store.versions(note.uid)
+        if (versions.isEmpty()) {
+            MaterialAlertDialogBuilder(this).setTitle(R.string.action_history).setMessage(R.string.history_empty)
+                .setPositiveButton(R.string.history_close, null).show()
+            return
+        }
+        val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+        val labels = versions.map { v ->
+            val first = (v.title.ifBlank { v.body.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty() }).trim().take(60)
+            fmt.format(java.util.Date(v.savedAt)) + "\n" + first
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(this).setTitle(R.string.action_history)
+            .setItems(labels) { _, i -> previewVersion(versions[i]) }
+            .setNegativeButton(R.string.history_close, null).show()
+    }
+
+    private fun previewVersion(v: NoteStore.Version) {
+        val text = (if (v.checklist) Checklist.toPlain(Checklist.parse(v.body)) else v.body)
+        val body = (v.title.takeIf { it.isNotBlank() }?.let { it + "\n\n" } ?: "") + text
+        MaterialAlertDialogBuilder(this).setTitle(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(v.savedAt)))
+            .setMessage(body)
+            .setPositiveButton(R.string.history_restore) { _, _ -> restoreVersion(v) }
+            .setNegativeButton(R.string.history_close, null).show()
+    }
+
+    private fun restoreVersion(v: NoteStore.Version) {
+        titleEdit.setText(v.title)
+        if (v.checklist) showChecklist(Checklist.parse(v.body).ifEmpty { listOf(Checklist.Item(false, "")) })
+        else { if (inChecklist()) { list.visibility = View.GONE; bodyEdit.visibility = View.VISIBLE }; bodyEdit.setText(v.body) }
+        saveNow(); renderMeta()
+        Toast.makeText(this, R.string.history_restored, Toast.LENGTH_SHORT).show()
+    }
 
     private fun saveNow() {
         val n = current()

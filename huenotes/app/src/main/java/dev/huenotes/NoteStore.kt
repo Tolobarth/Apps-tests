@@ -10,7 +10,9 @@ class NoteStore(
     context: Context,
     name: String = "huenotes.db",
     val storage: AttachmentStorage = AttachmentStorage.of(context),
-) : SQLiteOpenHelper(context.applicationContext, name, null, 4) {
+) : SQLiteOpenHelper(context.applicationContext, name, null, 5) {
+    /** Clock for version spacing; tests replace it. */
+    var clock: () -> Long = System::currentTimeMillis
     private val appContext = context.applicationContext
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -24,6 +26,12 @@ class NoteStore(
         db.execSQL("CREATE UNIQUE INDEX notes_uid ON notes(uid)")
         db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
         createAttachments(db)
+        createVersions(db)
+    }
+
+    private fun createVersions(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE note_versions(id INTEGER PRIMARY KEY AUTOINCREMENT, note_uid TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, checklist INTEGER NOT NULL, saved_at INTEGER NOT NULL)")
+        db.execSQL("CREATE INDEX note_versions_uid ON note_versions(note_uid)")
     }
 
     private fun createAttachments(db: SQLiteDatabase) {
@@ -46,6 +54,7 @@ class NoteStore(
             db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
         }
         if (o < 4) createAttachments(db)
+        if (o < 5) createVersions(db)
     }
 
     private fun Cursor.toNote() = Note(
@@ -76,6 +85,7 @@ class NoteStore(
 
     /** Inserts when id==0, otherwise updates. [touch] stamps modified_at with now (imports keep the original). */
     fun save(n: Note, touch: Boolean = true): Long {
+        if (n.id != 0L) get(n.id)?.let { if (it.title != n.title || it.body != n.body) snapshot(it, force = false) }
         val v = ContentValues().apply {
             put("title", n.title); put("body", n.body); put("checklist", if (n.checklist) 1 else 0)
             put("color", n.color); put("archived", if (n.archived) 1 else 0); put("pinned", if (n.pinned) 1 else 0)
@@ -89,6 +99,35 @@ class NoteStore(
         notifyChanged()
         return id
     }
+
+    // ---- version history ---------------------------------------------------------------------
+
+    class Version(val id: Long, val title: String, val body: String, val checklist: Boolean, val savedAt: Long)
+
+    /**
+     * Keeps [old] (the content about to be replaced) as a version. A burst of edits within [VERSION_SPACING_MS] keeps only the
+     * first pre-edit state, unless [force] (used before a sync overwrites local content). Blank and duplicate states are skipped.
+     */
+    private fun snapshot(old: Note, force: Boolean) {
+        if (old.title.isBlank() && old.body.isBlank()) return
+        val db = writableDatabase
+        val now = clock()
+        db.rawQuery("SELECT title, body, saved_at FROM note_versions WHERE note_uid=? ORDER BY id DESC LIMIT 1", arrayOf(old.uid)).use { c ->
+            if (c.moveToFirst()) {
+                if (c.getString(0) == old.title && c.getString(1) == old.body) return
+                if (!force && now - c.getLong(2) < VERSION_SPACING_MS) return
+            }
+        }
+        db.execSQL("INSERT INTO note_versions(note_uid, title, body, checklist, saved_at) VALUES(?,?,?,?,?)",
+            arrayOf(old.uid, old.title, old.body, if (old.checklist) 1 else 0, now))
+        db.execSQL("DELETE FROM note_versions WHERE note_uid=? AND id NOT IN (SELECT id FROM note_versions WHERE note_uid=? ORDER BY id DESC LIMIT $MAX_VERSIONS)", arrayOf(old.uid, old.uid))
+    }
+
+    /** Earlier versions of a note, newest first. */
+    fun versions(noteUid: String): List<Version> =
+        readableDatabase.rawQuery("SELECT id, title, body, checklist, saved_at FROM note_versions WHERE note_uid=? ORDER BY id DESC", arrayOf(noteUid)).use { c ->
+            generateSequence { if (c.moveToNext()) Version(c.getLong(0), c.getString(1), c.getString(2), c.getInt(3) == 1, c.getLong(4)) else null }.toList()
+        }
 
     private fun flag(id: Long, column: String, value: Long) {
         writableDatabase.update("notes", ContentValues().apply { put(column, value); put("sync_at", System.currentTimeMillis()) }, "id=?", arrayOf(id.toString()))
@@ -123,6 +162,7 @@ class NoteStore(
         try {
             val now = System.currentTimeMillis()
             db.execSQL("DELETE FROM attachments WHERE note_uid IN (SELECT uid FROM notes WHERE $where)", args)
+            db.execSQL("DELETE FROM note_versions WHERE note_uid IN (SELECT uid FROM notes WHERE $where)", args)
             db.rawQuery("SELECT uid FROM notes WHERE $where", args).use { c ->
                 while (c.moveToNext()) db.execSQL("INSERT OR REPLACE INTO tombstones(uid, at) VALUES(?, ?)", arrayOf(c.getString(0), now))
             }
@@ -202,6 +242,7 @@ class NoteStore(
             for (n in upserts) {
                 val cur = query("uid=?", arrayOf(n.uid), "id").firstOrNull()
                 if (cur != null && cur.updatedAt != baseline[n.uid]) continue
+                if (cur != null && (cur.title != n.title || cur.body != n.body)) snapshot(cur, force = true)
                 val v = ContentValues().apply {
                     put("title", n.title); put("body", n.body); put("checklist", if (n.checklist) 1 else 0)
                     put("color", n.color); put("archived", if (n.archived) 1 else 0); put("pinned", if (n.pinned) 1 else 0)
@@ -222,6 +263,7 @@ class NoteStore(
                 if (cur.updatedAt != baseline[uid]) continue
                 staleFiles += attachmentsWhere("note_uid=?", arrayOf(uid))
                 db.execSQL("DELETE FROM attachments WHERE note_uid=?", arrayOf(uid))
+                db.execSQL("DELETE FROM note_versions WHERE note_uid=?", arrayOf(uid))
                 db.delete("notes", "uid=?", arrayOf(uid)); removed += cur.id
             }
             for ((uid, at) in tombs) db.execSQL("INSERT OR REPLACE INTO tombstones(uid, at) VALUES(?, MAX(?, COALESCE((SELECT at FROM tombstones WHERE uid=?), 0)))", arrayOf(uid, at, uid))
@@ -236,6 +278,8 @@ class NoteStore(
     private fun notifyChanged() = Widgets.refresh(appContext)
 
     companion object {
+        const val VERSION_SPACING_MS = 5L * 60 * 1000
+        const val MAX_VERSIONS = 50
         const val TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000
         private const val ACOLS = "uid,note_uid,kind,duration,created_at"
         private const val COLS = "id,title,body,checklist,color,archived,reminder_at,modified_at,created_at,pinned,deleted_at,uid,sync_at"

@@ -23,8 +23,8 @@ android {
         applicationId = "dev.huenotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.8"
+        versionCode = 9
+        versionName = "0.9"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
