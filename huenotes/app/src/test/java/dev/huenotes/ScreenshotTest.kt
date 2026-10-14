@@ -72,6 +72,12 @@ class ScreenshotTest {
     @Test @Config(qualifiers = "de-w411dp-h891dp-night-xxhdpi")
     fun settingsGermanDark() = shot("settings_de_dark", Robolectric.buildActivity(SettingsActivity::class.java).setup().get())
 
+    @Test @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun settingsFull() {
+        Prefs.setSyncEmail(app, "you@gmail.com"); Prefs.setLastSync(app, System.currentTimeMillis() - 3_600_000)
+        shot("settings_full_synced", Robolectric.buildActivity(SettingsActivity::class.java).setup().get())
+    }
+
     @Test fun trash() {
         val s = NoteStore(app)
         s.trash(s.list(false).first { it.title == "Book list" }.id)

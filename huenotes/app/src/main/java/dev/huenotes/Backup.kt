@@ -14,7 +14,7 @@ object Backup {
         .put("notes", JSONArray(notes.map {
             JSONObject().put("title", it.title).put("body", it.body).put("checklist", it.checklist)
                 .put("color", it.color).put("archived", it.archived).put("pinned", it.pinned)
-                .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt)
+                .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt).put("uid", it.uid)
         })).toString(2)
 
     fun fromJson(text: String): List<Note> {
@@ -29,7 +29,8 @@ object Backup {
                 title = o.optString("title"), body = o.optString("body"), checklist = o.optBoolean("checklist"),
                 color = o.optInt("color", Note.COLORS[0]), archived = o.optBoolean("archived"),
                 pinned = o.optBoolean("pinned"), reminderAt = o.optLong("reminderAt"),
-                modifiedAt = modified, createdAt = o.optLong("createdAt", modified)
+                modifiedAt = modified, createdAt = o.optLong("createdAt", modified),
+                uid = o.optString("uid").ifBlank { java.util.UUID.randomUUID().toString() }
             )
         }
     }
@@ -44,10 +45,12 @@ object Backup {
     /** Adds notes you don't already have (same title, body and creation time). Parses fully before writing. */
     fun importText(c: Context, store: NoteStore, text: String): Int {
         val incoming = fromJson(text).filterNot { it.isEmpty }
-        val have = (store.list(false) + store.list(true)).map { Triple(it.title, it.body, it.createdAt) }.toHashSet()
+        val existing = store.list(false) + store.list(true)
+        val uids = existing.map { it.uid }.toHashSet()
+        val have = existing.map { Triple(it.title, it.body, it.createdAt) }.toHashSet()
         var added = 0
         incoming.forEach { n ->
-            if (have.add(Triple(n.title, n.body, n.createdAt))) {
+            if (n.uid !in uids && have.add(Triple(n.title, n.body, n.createdAt))) {
                 Reminders.sync(c, n.copy(id = store.save(n, touch = false)))
                 added++
             }

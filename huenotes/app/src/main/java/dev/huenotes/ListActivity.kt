@@ -59,7 +59,7 @@ class ListActivity : GatedActivity() {
             override fun onTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
         })
         filterRow = findViewById(R.id.filterRow)
-        findViewById<View>(R.id.fab).setOnClickListener { openEditor(0) }
+        findViewById<View>(R.id.fab).setOnClickListener { showAddSheet() }
         findViewById<View>(R.id.sortButton).setOnClickListener { showSortSheet() }
         findViewById<View>(R.id.moreButton).setOnClickListener { showMenu(it) }
 
@@ -79,6 +79,7 @@ class ListActivity : GatedActivity() {
         store.purgeTrash(System.currentTimeMillis() - NoteStore.TRASH_RETENTION_MS)
         Snapshots.maybeRun(this, store)
         refresh()
+        SyncManager.syncIfDue(this) { if (!isFinishing) refresh() }
     }
 
     override fun onResume() {
@@ -86,7 +87,34 @@ class ListActivity : GatedActivity() {
         nav.menu.findItem(if (showArchive) R.id.nav_archive else R.id.nav_notes).isChecked = true
     }
 
-    private fun openEditor(id: Long) = startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id))
+    private fun openEditor(id: Long, asList: Boolean = false) =
+        startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("checklist", asList))
+
+    /** "+" opens a small chooser: a text note or a checklist. */
+    private fun showAddSheet() {
+        val sheet = BottomSheetDialog(this)
+        val pad = Palette.dp(this, 20)
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad) }
+        col.addView(TextView(this).apply {
+            setText(R.string.add_title); textSize = 20f; setTypeface(typeface, Typeface.BOLD)
+            setTextColor(getColor(R.color.on_surface)); setPadding(0, 0, 0, pad / 2)
+        })
+        val ripple = android.util.TypedValue().also { theme.resolveAttribute(android.R.attr.selectableItemBackground, it, true) }.resourceId
+        fun option(icon: Int, label: Int, asList: Boolean) = col.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
+            minimumHeight = Palette.dp(context, 56); setBackgroundResource(ripple); isClickable = true
+            addView(android.widget.ImageView(context).apply {
+                setImageResource(icon); setColorFilter(getColor(R.color.on_surface))
+                layoutParams = LinearLayout.LayoutParams(Palette.dp(context, 24), Palette.dp(context, 24)).apply { marginEnd = Palette.dp(context, 20) }
+            })
+            addView(TextView(context).apply { setText(label); textSize = 17f; setTextColor(getColor(R.color.on_surface)) })
+            setOnClickListener { sheet.dismiss(); openEditor(0, asList) }
+        })
+        option(R.drawable.ic_notes, R.string.add_text, false)
+        option(R.drawable.ic_checklist, R.string.add_list, true)
+        sheet.setContentView(col)
+        sheet.show()
+    }
 
     private fun refresh() {
         findViewById<TextView>(R.id.screenTitle).setText(if (showArchive) R.string.nav_archive else R.string.nav_notes)

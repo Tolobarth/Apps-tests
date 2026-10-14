@@ -75,7 +75,7 @@ class CoreTest {
             Note(title = "B", body = "line", archived = true),
         )
         val back = Backup.fromJson(Backup.toJson(src))
-        assertEquals(src.map { it.copy(id = 0) }, back)
+        assertEquals(src.map { it.copy(id = 0, updatedAt = 0) }, back.map { it.copy(updatedAt = 0) })
     }
 
     @Test fun backupRejectsForeignAndNewerFiles() {

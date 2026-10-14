@@ -42,6 +42,8 @@ class EditorActivity : GatedActivity() {
         super.onCreate(s)
         store = NoteStore(this)
         note = store.get(intent.getLongExtra("id", 0)) ?: Note(color = Prefs.defaultColor(this))
+        val startAsList = note.id == 0L && intent.getBooleanExtra("checklist", false)
+        if (startAsList) note = note.copy(checklist = true)
         setContentView(R.layout.activity_editor)
 
         titleEdit = findViewById(R.id.titleEdit); bodyEdit = findViewById(R.id.bodyEdit)
@@ -55,6 +57,7 @@ class EditorActivity : GatedActivity() {
         }
         titleEdit.setText(note.title)
         if (note.checklist) showChecklist(Checklist.parse(note.body)) else bodyEdit.setText(note.body)
+        if (startAsList) list.getChildAt(0)?.findViewById<EditText>(R.id.text)?.requestFocus()
         bodyEdit.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(e: Editable?) = renderMeta()
             override fun beforeTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit

@@ -73,3 +73,10 @@ a Settings screen (theme, language, text size, default colour/sort/start screen,
 widget opacity, password, backup, daily local snapshots) and five languages: English, Francais, Espanol, Portugues, Deutsch.
 Strings are checked by `StringsTest` so no language can miss a key. On Android 12 and older the in-app language applies to
 screens; widgets and notifications follow it too through `Loc`.
+
+### v0.3
+
+"+" now opens an Add chooser (Text or List). Google sync (Drive app-data folder, last change wins per note, tombstones for
+deletions), a fixed debug signing key so updates install over older builds, and an INTERNET permission that is used only
+for sync. Setup steps: `docs/google-sync-setup.md`. Sync logic, the Drive client (against a local fake server) and the
+database upgrades are covered by tests; real Google sign-in has not been exercised.

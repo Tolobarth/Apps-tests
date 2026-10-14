@@ -13,6 +13,10 @@ data class Note(
     val pinned: Boolean = false,
     /** 0 = not in the trash, otherwise when it was moved there. */
     val deletedAt: Long = 0,
+    /** Stable identity across devices (the local row id is not). */
+    val uid: String = java.util.UUID.randomUUID().toString(),
+    /** Last time anything about the note changed, including pin/archive/trash. Drives sync conflict resolution. */
+    val updatedAt: Long = System.currentTimeMillis(),
 ) {
     val isEmpty get() = title.isBlank() && body.isBlank()
 

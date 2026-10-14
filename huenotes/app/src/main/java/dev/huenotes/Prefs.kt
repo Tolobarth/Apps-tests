@@ -57,6 +57,13 @@ object Prefs {
     fun widgetOpacity(c: Context) = p(c).getInt("wopacity", 100)
     fun setWidgetOpacity(c: Context, v: Int) = p(c).edit().putInt("wopacity", v).apply()
 
+    fun syncEmail(c: Context) = p(c).getString("syncEmail", "") ?: ""
+    fun setSyncEmail(c: Context, v: String) = p(c).edit().putString("syncEmail", v).apply()
+    fun autoSync(c: Context) = p(c).getBoolean("autoSync", true)
+    fun setAutoSync(c: Context, v: Boolean) = p(c).edit().putBoolean("autoSync", v).apply()
+    fun lastSync(c: Context) = p(c).getLong("lastSync", 0)
+    fun setLastSync(c: Context, v: Long) = p(c).edit().putLong("lastSync", v).apply()
+
     fun autoSnapshots(c: Context) = p(c).getBoolean("snapshots", true)
     fun setAutoSnapshots(c: Context, v: Boolean) = p(c).edit().putBoolean("snapshots", v).apply()
     fun lastSnapshot(c: Context) = p(c).getLong("lastSnapshot", 0)

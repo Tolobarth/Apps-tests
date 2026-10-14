@@ -1,6 +1,12 @@
 package dev.huenotes
 
+import android.app.Activity
+import android.content.Intent
 import android.graphics.drawable.GradientDrawable
+import androidx.activity.result.IntentSenderRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.ApiException
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
@@ -23,6 +29,13 @@ class SettingsActivity : GatedActivity() {
     }
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) guarded { toast(imported(Backup.import(this, NoteStore(this), uri))) }
+    }
+
+    private val authLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { res ->
+        if (res.resultCode == Activity.RESULT_OK && res.data != null) {
+            try { onAuthorized(Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(res.data!!)) }
+            catch (e: Exception) { syncFailed(e) }
+        }
     }
 
     override fun onCreate(s: Bundle?) {
@@ -55,6 +68,18 @@ class SettingsActivity : GatedActivity() {
         }
         row(getString(R.string.settings_font_size), fonts[Prefs.fontSize(this)]) {
             choose(R.string.settings_font_size, fonts, Prefs.fontSize(this)) { Prefs.setFontSize(this, it); render() }
+        }
+
+        section(R.string.settings_sync)
+        if (!SyncManager.isConnected(this)) {
+            row(getString(R.string.sync_connect), getString(R.string.sync_connect_sum)) { connect() }
+        } else {
+            val last = Prefs.lastSync(this)
+            row(getString(R.string.sync_account), Prefs.syncEmail(this))
+            row(getString(R.string.sync_now), if (last == 0L) getString(R.string.sync_never)
+                else getString(R.string.sync_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(last)))) { connect() }
+            switchRow(getString(R.string.sync_auto), getString(R.string.sync_auto_sum), Prefs.autoSync(this)) { Prefs.setAutoSync(this, it) }
+            row(getString(R.string.sync_disconnect)) { confirmDisconnect() }
         }
 
         section(R.string.settings_notes)
@@ -172,6 +197,39 @@ class SettingsActivity : GatedActivity() {
             .setItems(files.map { fmt.format(Date(it.lastModified())) }.toTypedArray()) { _, i ->
                 guarded { toast(imported(Backup.importText(this, NoteStore(this), files[i].readText()))) }
             }.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    // ---- Google sync ---------------------------------------------------------------------------
+
+    /** Authorizes (showing Google's consent screen the first time) and then syncs. */
+    private fun connect() {
+        SyncManager.authorize(this)
+            .addOnSuccessListener { r ->
+                if (r.hasResolution()) authLauncher.launch(IntentSenderRequest.Builder(r.pendingIntent!!.intentSender).build())
+                else onAuthorized(r)
+            }
+            .addOnFailureListener { syncFailed(it) }
+    }
+
+    private fun onAuthorized(r: AuthorizationResult) {
+        val token = r.accessToken ?: return syncFailed(IllegalStateException("No access token"))
+        Prefs.setSyncEmail(this, r.toGoogleSignInAccount()?.email ?: Prefs.syncEmail(this).ifEmpty { "Google" })
+        toast(getString(R.string.sync_running))
+        render()
+        SyncManager.run(this, token) { res ->
+            res.onSuccess { toast(getString(R.string.sync_done)); render() }.onFailure { syncFailed(it) }
+        }
+    }
+
+    private fun syncFailed(e: Throwable) {
+        if (e is ApiException && e.statusCode == 10) toast(getString(R.string.sync_not_configured))   // DEVELOPER_ERROR: OAuth client missing
+        else toast(getString(R.string.sync_failed, e.message ?: e.javaClass.simpleName))
+    }
+
+    private fun confirmDisconnect() {
+        MaterialAlertDialogBuilder(this).setTitle(R.string.sync_disconnect_title).setMessage(R.string.sync_disconnect_msg)
+            .setPositiveButton(R.string.sync_disconnect) { _, _ -> Prefs.setSyncEmail(this, ""); Prefs.setLastSync(this, 0); render() }
+            .setNegativeButton(R.string.btn_cancel, null).show()
     }
 
     private fun imported(n: Int) = resources.getQuantityString(R.plurals.backup_imported, n, n)
