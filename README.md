@@ -142,3 +142,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - WorkManager: sync every ~6 h when online and ~30 s after a change (debounced), only when connected and "Sync automatically" is on. Never shows a consent screen; if sign-in has expired the status line says so.
 - Settings → Sync shows the last sync time or the last error in plain words (offline, sign-in expired, Google busy). Transient failures are retried up to 3 times.
 - Not yet tested against real Google or on a device; background timing is up to Android.
+
+### v0.12 — Full backup
+- "Back up everything" writes a `.zip` (`notes.json` + `attachments/…`) with photos, drawings and recordings; "Restore" accepts `.zip` and older `.json` files, never uses zip entry names as paths, and caps sizes.
+- Automatic backup: pick a folder through the system picker; a daily zip is written there (WorkManager) and the newest 7 are kept. "Back up now" shows the result.
+- The folder picker and writing into it are not covered by unit tests (no Storage Access Framework in the test environment); try it on a device.
