@@ -134,3 +134,6 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 ### v0.9 — Version history
 - Every content change keeps the previous text as a version (min. 5 min apart, max 50 per note, local only); content replaced by a sync is kept too.
 - Editor overflow menu → "Version history" → preview → Restore. Deleting a note deletes its history. DB version 5.
+
+### v0.10 — Conflict copies
+- Sync remembers the version both devices last agreed on (`sync_base`, DB v6). If a note was changed on two devices with different text, the newer edit stays as the note and the older becomes a "(conflict copy)" note (same copy on every device); attachments from both sides are kept. A toast reports it.
