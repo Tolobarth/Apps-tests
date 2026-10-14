@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionCode="2000051"
+    android:versionName="2.0.1"
+    android:compileSdkVersion="37"
+    android:compileSdkVersionCodename="17"
+    package="org.fdroid.fdroid"
+    platformBuildVersionCode="37"
+    platformBuildVersionName="17">
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="37"/>
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="32"/>
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK"/>
+    <uses-permission-sdk-23
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="30"/>
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
+    <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP"/>
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>
+    <permission
+        android:name="org.fdroid.fdroid.permission.UPDATE_REPOS"
+        android:protectionLevel="system|signature"/>
+    <uses-permission android:name="org.fdroid.fdroid.permission.UPDATE_REPOS"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+    <permission
+        android:name="org.fdroid.fdroid.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:protectionLevel="signature"/>
+    <uses-permission android:name="org.fdroid.fdroid.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="message/rfc822"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND_MULTIPLE"/>
+            <data android:mimeType="message/rfc822"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+        </intent>
+    </queries>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.front"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.screen.landscape"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false"/>
+    <application
+        android:theme="@style/Theme.FDroid"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:name="org.fdroid.App"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:banner="@mipmap/ic_banner"
+        android:extractNativeLibs="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+        android:memtagMode="async"
+        android:dataExtractionRules="@xml/backup_extraction_rules"
+        android:localeConfig="@xml/locales_config"
+        android:enableOnBackInvokedCallback="true">
+        <activity
+            android:theme="@style/Theme.App"
+            android:label="@string/swap"
+            android:name="org.fdroid.fdroid.nearby.SwapWorkflowActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden"
+            android:parentActivityName="org.fdroid.MainActivity"/>
+        <activity
+            android:label="@string/panic_settings"
+            android:name="org.fdroid.ui.panic.PanicActivity"
+            android:exported="true"
+            android:parentActivityName="org.fdroid.MainActivity">
+            <intent-filter>
+                <action android:name="info.guardianproject.panic.action.CONNECT"/>
+                <action android:name="info.guardianproject.panic.action.DISCONNECT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:theme="@android:style/Theme.NoDisplay"
+            android:name="org.fdroid.ui.panic.PanicResponderActivity"
+            android:exported="true"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="info.guardianproject.panic.action.TRIGGER"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:theme="@android:style/Theme.NoDisplay"
+            android:name="org.fdroid.ui.panic.ExitActivity"
+            android:exported="false"/>
+        <activity
+            android:label="@string/ipfsgw_title"
+            android:name="org.fdroid.ui.ipfs.IpfsGatewaySettingsActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:configChanges="layoutDirection|locale"/>
+        <receiver
+            android:name="org.fdroid.fdroid.nearby.UsbDeviceAttachedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter"/>
+        </receiver>
+        <receiver
+            android:name="org.fdroid.fdroid.nearby.UsbDeviceDetachedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_DETACHED"
+                android:resource="@xml/device_filter"/>
+        </receiver>
+        <receiver
+            android:name="org.fdroid.fdroid.nearby.UsbDeviceMediaMountedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_EJECT"/>
+                <action android:name="android.intent.action.MEDIA_REMOVED"/>
+                <action android:name="android.intent.action.MEDIA_MOUNTED"/>
+                <action android:name="android.intent.action.MEDIA_BAD_REMOVAL"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+            </intent-filter>
+        </receiver>
+        <service
+            android:name="org.fdroid.fdroid.nearby.SwapService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"/>
+        <service
+            android:name="org.fdroid.fdroid.nearby.LocalRepoService"
+            android:exported="false"/>
+        <service
+            android:name="org.fdroid.fdroid.nearby.TreeUriScannerIntentService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"/>
+        <service
+            android:name="org.fdroid.fdroid.nearby.SDCardScannerService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"/>
+        <activity
+            android:theme="@style/Theme.FDroid"
+            android:name="org.fdroid.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SHOW_APP_INFO"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="market"
+                    android:host="details"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+                <data android:host="f-droid.org"/>
+                <data android:host="staging.f-droid.org"/>
+                <data android:host="cloudflare.f-droid.org"/>
+                <data android:pathPrefix="/packages/"/>
+                <data android:pathPattern="/.*/packages/.*"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+                <data android:host="fdroid.link"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="fdroidrepos"/>
+                <data android:scheme="FDROIDREPOS"/>
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:label="@string/icon_calculator"
+            android:icon="@mipmap/ic_calculator"
+            android:name="org.fdroid.IconCalculatorActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity="org.fdroid.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.APP_MARKET"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="org.fdroid.IconActivity"
+            android:exported="true"
+            android:targetActivity="org.fdroid.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.APP_MARKET"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:label="@string/icon_calculator"
+            android:icon="@mipmap/ic_calculator"
+            android:name="org.fdroid.fdroid.panic.CalculatorActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity="org.fdroid.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.APP_MARKET"/>
+            </intent-filter>
+        </activity-alias>
+        <activity
+            android:name="org.fdroid.ui.crash.CrashActivity"
+            android:exported="false"
+            android:process=":acra"
+            android:finishOnTaskLaunch="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity
+            android:theme="@style/zxing_CaptureTheme"
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:exported="false"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:screenOrientation="fullSensor"
+            android:windowSoftInputMode="stateAlwaysHidden"/>
+        <activity
+            android:name="org.fdroid.ui.repositories.UpdateRepoActivity"
+            android:permission="org.fdroid.fdroid.permission.UPDATE_REPOS"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance">
+            <intent-filter>
+                <action android:name="org.fdroid.action.UPDATE_REPOS"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <service
+            android:name="org.fdroid.install.AppInstallService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:enabled="@bool/enable_system_foreground_service_default"
+            android:exported="false"
+            android:directBootAware="false"
+            android:foregroundServiceType="dataSync"/>
+        <provider
+            android:name="org.fdroid.install.ApkFileProvider"
+            android:exported="false"
+            android:authorities="org.fdroid.fdroid.install.ApkFileProvider"
+            android:grantUriPermissions="true"/>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:exported="false"
+            android:authorities="org.fdroid.fdroid.fileprovider"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+        <receiver
+            android:name="org.fdroid.install.UnarchivePackageReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.UNARCHIVE_PACKAGE"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="org.fdroid.updates.SelfUpdateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        <service
+            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:enabled="@bool/enable_system_job_service_default"
+            android:exported="true"
+            android:directBootAware="false"/>
+        <receiver
+            android:name="androidx.work.impl.utils.ForceStopRunnable.BroadcastReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="false"/>
+        <receiver
+            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+            android:enabled="false"
+            android:exported="false"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+            android:permission="android.permission.DUMP"
+            android:enabled="true"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS"/>
+            </intent-filter>
+        </receiver>
+        <provider
+            android:name="org.jetbrains.compose.resources.AndroidContextProvider"
+            android:enabled="true"
+            android:exported="false"
+            android:authorities="org.fdroid.fdroid.resources.AndroidContextProvider"/>
+        <uses-library
+            android:name="androidx.window.extensions"
+            android:required="false"/>
+        <uses-library
+            android:name="androidx.window.sidecar"
+            android:required="false"/>
+        <activity
+            android:theme="@android:style/Theme.Dialog"
+            android:name="org.acra.dialog.CrashReportDialog"
+            android:process=":acra"
+            android:finishOnTaskLaunch="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"/>
+        <service
+            android:name="androidx.room.MultiInstanceInvalidationService"
+            android:exported="false"
+            android:directBootAware="true"/>
+        <service
+            android:name="org.acra.sender.LegacySenderService"
+            android:enabled="@bool/acra_enable_legacy_service"
+            android:exported="false"
+            android:process=":acra"/>
+        <service
+            android:name="org.acra.sender.JobSenderService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:enabled="@bool/acra_enable_job_service"
+            android:exported="false"
+            android:process=":acra"/>
+        <provider
+            android:name="org.acra.attachment.AcraContentProvider"
+            android:exported="false"
+            android:process=":acra"
+            android:authorities="org.fdroid.fdroid.acra"
+            android:grantUriPermissions="true"/>
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            android:permission="android.permission.DUMP"
+            android:enabled="true"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SKIP_FILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

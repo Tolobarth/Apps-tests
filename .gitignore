@@ -1,0 +1,9 @@
+# APKs and other binaries are inputs, not source — don't commit them.
+apks/*
+!apks/.gitkeep
+*.apk
+*.apks
+*.xapk
+*.aab
+# Large raw REA evidence; reports keep the summaries.
+reports/**/raw/
