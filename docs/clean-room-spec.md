@@ -17,9 +17,9 @@ layouts, strings, icons or branding are copied. The implementation in
 | Search | `activity.Search` | yes |
 | Reminders | `ReminderReceiver`, `ReminderSettings`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED` | yes (re-armed on boot) |
 | Share / export | `SendAsAttachment`, `SendToClipboard` | share as text |
-| Password lock | `PasswordSetting` | later |
-| Calendar / Today view | `ScreenCalendar`, `MonthView`, `Today` | later |
-| Home-screen widgets | `NoteWidget`, `TodayWidget2x2` | later |
+| Password lock | `PasswordSetting` | yes (salted PBKDF2 hash, UI gate, 30 s relock) |
+| Calendar / Today view | `ScreenCalendar`, `MonthView`, `Today` | yes (`DayActivity`, by reminder date) |
+| Home-screen widgets | `NoteWidget`, `TodayWidget2x2` | yes (recent notes, today); show "Locked" when a password is set |
 | Cloud sync, accounts, ads, billing | `sync.*`, `oauth.*`, billing/AD_ID perms | out of scope |
 
 ## Data model (own design)

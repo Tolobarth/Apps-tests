@@ -11,6 +11,15 @@
             </intent-filter>
         </activity>
         <activity android:name=".EditorActivity" android:exported="false" />
+        <activity android:name=".DayActivity" android:exported="false" />
+        <receiver android:name=".RecentWidget" android:exported="false" android:label="HueNotes: recent">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_recent" />
+        </receiver>
+        <receiver android:name=".TodayWidget" android:exported="false" android:label="HueNotes: today">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today" />
+        </receiver>
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>

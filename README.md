@@ -62,5 +62,5 @@ export ANDROID_HOME=/opt/android-sdk   # SDK with platform 34 + build-tools 34.0
 cd huenotes && gradle :app:assembleDebug
 ```
 
-Not yet done: password lock, calendar/Today view, widgets, backup. Not run on a
+Also implemented: password lock (UI gate only; the database is not encrypted), calendar/Today view, two home-screen widgets. Not yet done: backup. Not run on a
 device or emulator yet, only compiled and statically inspected.

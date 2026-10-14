@@ -1,6 +1,5 @@
 package dev.huenotes
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -12,7 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 
-class ListActivity : Activity() {
+class ListActivity : GatedActivity() {
     private lateinit var store: NoteStore
     private lateinit var list: ListView
     private lateinit var search: EditText
@@ -40,7 +39,7 @@ class ListActivity : Activity() {
         setContentView(root)
     }
 
-    override fun onResume() { super.onResume(); refresh() }
+    override fun onUnlocked() = refresh()
 
     private fun openEditor(id: Long) = startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id))
 
@@ -69,12 +68,27 @@ class ListActivity : Activity() {
     }
 
     override fun onCreateOptionsMenu(m: Menu): Boolean {
-        m.add(0, 1, 0, "Archive / Notes").setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        m.add(0, 1, 0, "Archive / Notes")
+        m.add(0, 2, 1, "Calendar / Today")
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(m: Menu): Boolean {
+        m.removeGroup(1)
+        if (!Lock.isSet(this)) m.add(1, 3, 2, "Set password")
+        else { m.add(1, 4, 2, "Change password"); m.add(1, 5, 3, "Remove password") }
         return true
     }
 
     override fun onOptionsItemSelected(i: MenuItem): Boolean {
-        if (i.itemId == 1) { showArchive = !showArchive; refresh(); return true }
-        return super.onOptionsItemSelected(i)
+        when (i.itemId) {
+            1 -> { showArchive = !showArchive; refresh() }
+            2 -> startActivity(Intent(this, DayActivity::class.java))
+            3 -> Lock.setupFlow(this) { Widgets.refresh(this) }
+            4 -> Lock.changeFlow(this)
+            5 -> Lock.removeFlow(this)
+            else -> return super.onOptionsItemSelected(i)
+        }
+        return true
     }
 }

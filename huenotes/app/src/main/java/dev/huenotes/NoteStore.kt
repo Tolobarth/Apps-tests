@@ -6,7 +6,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class NoteStore(context: Context) : SQLiteOpenHelper(context, "huenotes.db", null, 1) {
+class NoteStore(context: Context) : SQLiteOpenHelper(context.applicationContext, "huenotes.db", null, 1) {
+    private val appContext = context.applicationContext
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
@@ -30,6 +31,11 @@ class NoteStore(context: Context) : SQLiteOpenHelper(context, "huenotes.db", nul
         ).use { c -> return generateSequence { if (c.moveToNext()) c.toNote() else null }.toList() }
     }
 
+    fun reminderBetween(from: Long, to: Long): List<Note> = readableDatabase.rawQuery(
+        "SELECT id,title,body,checklist,color,archived,reminder_at,modified_at FROM notes " +
+            "WHERE reminder_at>=? AND reminder_at<? AND archived=0 ORDER BY reminder_at", arrayOf(from.toString(), to.toString())
+    ).use { c -> generateSequence { if (c.moveToNext()) c.toNote() else null }.toList() }
+
     fun get(id: Long): Note? = readableDatabase.rawQuery(
         "SELECT id,title,body,checklist,color,archived,reminder_at,modified_at FROM notes WHERE id=?",
         arrayOf(id.toString())
@@ -48,8 +54,10 @@ class NoteStore(context: Context) : SQLiteOpenHelper(context, "huenotes.db", nul
             put("reminder_at", n.reminderAt); put("modified_at", System.currentTimeMillis())
         }
         return if (n.id == 0L) writableDatabase.insert("notes", null, v)
-        else { writableDatabase.update("notes", v, "id=?", arrayOf(n.id.toString())); n.id }
+        else { writableDatabase.update("notes", v, "id=?", arrayOf(n.id.toString())); n.id }.also { notifyChanged() }
     }
 
-    fun delete(id: Long) { writableDatabase.delete("notes", "id=?", arrayOf(id.toString())) }
+    fun delete(id: Long) { writableDatabase.delete("notes", "id=?", arrayOf(id.toString())); notifyChanged() }
+
+    private fun notifyChanged() = Widgets.refresh(appContext)
 }

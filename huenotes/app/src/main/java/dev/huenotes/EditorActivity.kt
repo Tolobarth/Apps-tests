@@ -1,6 +1,5 @@
 package dev.huenotes
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -12,7 +11,7 @@ import android.view.View
 import android.widget.*
 import java.util.Calendar
 
-class EditorActivity : Activity() {
+class EditorActivity : GatedActivity() {
     private lateinit var store: NoteStore
     private lateinit var titleEdit: EditText
     private lateinit var bodyEdit: EditText
