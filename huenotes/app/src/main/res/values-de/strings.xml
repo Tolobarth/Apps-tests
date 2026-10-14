@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="sync_conflict_suffix">(Konfliktkopie)</string>
     <string name="action_history">Versionsverlauf</string>
     <string name="history_empty">Noch keine früheren Versionen. Versionen werden gespeichert, wenn du eine Notiz änderst.</string>
     <string name="history_restore">Diese Version wiederherstellen</string>
@@ -219,6 +220,10 @@
     <string name="sync_done">Synchronisierung abgeschlossen</string>
     <string name="sync_failed">Synchronisierung fehlgeschlagen: %1$s</string>
     <string name="sync_not_configured">Die Google-Anmeldung ist für diese Version noch nicht eingerichtet. Siehe README.</string>
+    <plurals name="sync_conflicts">
+        <item quantity="one">%1$d Notiz wurde auf zwei Geräten bearbeitet. Beide Versionen blieben erhalten.</item>
+        <item quantity="other">%1$d Notizen wurden auf zwei Geräten bearbeitet. Beide Versionen blieben erhalten.</item>
+    </plurals>
     <plurals name="word_count">
         <item quantity="one">%1$d Wort</item>
         <item quantity="other">%1$d Wörter</item>

@@ -17,6 +17,8 @@ class MergeResult(
     val upsertAttachments: Map<String, List<Attachment>>,
     val deleteUids: Set<String>,
     val needUpload: Boolean,
+    /** Uids of the copies created because both devices edited the same note since the last sync. */
+    val conflictCopies: List<String> = emptyList(),
 )
 
 /**
@@ -27,14 +29,26 @@ class MergeResult(
 object SyncEngine {
     const val TOMBSTONE_KEEP_MS = 90L * 24 * 3600 * 1000
 
-    fun merge(local: Snapshot, remote: Snapshot?, now: Long = System.currentTimeMillis()): MergeResult {
+    /** Same on every device, so two devices resolving the same conflict produce the same copy instead of two. */
+    fun copyUid(uid: String, loserUpdatedAt: Long): String =
+        "c" + java.security.MessageDigest.getInstance("SHA-256").digest("$uid:$loserUpdatedAt".toByteArray())
+            .take(12).joinToString("") { "%02x".format(it) }
+
+    /**
+     * [base] maps a uid to its updatedAt at the last completed sync. A note changed on both sides since then, with different
+     * text, keeps the newer version as the note and the older one as a separate "[conflictSuffix]" copy; attachments are unioned.
+     */
+    fun merge(
+        local: Snapshot, remote: Snapshot?, now: Long = System.currentTimeMillis(),
+        base: Map<String, Long> = emptyMap(), conflictSuffix: String = "(conflict copy)",
+    ): MergeResult {
         val tombs = HashMap(local.tombstones)
         remote?.tombstones?.forEach { (k, v) -> tombs.merge(k, v) { a, b -> maxOf(a, b) } }
         val l = local.notes.associateBy { it.uid }
         val r = remote?.notes?.associateBy { it.uid } ?: emptyMap()
         val kept = LinkedHashMap<String, Note>()
         val keptAtt = LinkedHashMap<String, List<Attachment>>()
-        val upserts = ArrayList<Note>(); val upsertAtt = LinkedHashMap<String, List<Attachment>>(); val deletes = HashSet<String>()
+        val copies = ArrayList<String>(); val upserts = ArrayList<Note>(); val upsertAtt = LinkedHashMap<String, List<Attachment>>(); val deletes = HashSet<String>()
         for (uid in l.keys + r.keys) {
             val a = l[uid]; val b = r[uid]
             val remoteWins = a == null || (b != null && b.updatedAt > a.updatedAt)
@@ -42,16 +56,31 @@ object SyncEngine {
             val t = tombs[uid]
             if (t != null && t >= winner.updatedAt) { if (a != null) deletes += uid; continue }
             kept[uid] = winner
-            val att = (if (remoteWins) remote?.attachments else local.attachments)?.get(uid).orEmpty()
+            val winAtt = (if (remoteWins) remote?.attachments else local.attachments)?.get(uid).orEmpty()
+            var att = winAtt
+            val bs = base[uid] ?: 0L
+            if (a != null && b != null && a.updatedAt > bs && b.updatedAt > bs && (a.title != b.title || a.body != b.body)) {
+                val loser = if (remoteWins) a else b
+                val loserAtt = (if (remoteWins) local.attachments else remote?.attachments)?.get(uid).orEmpty()
+                att = winAtt + loserAtt.filter { x -> winAtt.none { it.uid == x.uid } }
+                val cu = copyUid(uid, loser.updatedAt)
+                if (l[cu] == null && r[cu] == null) {
+                    val copy = loser.copy(id = 0, uid = cu, title = (loser.title.ifBlank { loser.body.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty().take(40) } + " " + conflictSuffix).trim(),
+                        pinned = false, reminderAt = 0, deletedAt = 0)
+                    kept[cu] = copy; upserts += copy; upsertAtt[cu] = emptyList(); copies += cu
+                }
+                if (!remoteWins && att.size != winAtt.size) upserts += winner
+                if (!remoteWins) upsertAtt[uid] = att
+            }
             if (att.isNotEmpty()) keptAtt[uid] = att
             if (remoteWins) { upserts += winner; upsertAtt[uid] = att }
         }
         val liveTombs = tombs.filterValues { now - it < TOMBSTONE_KEEP_MS }
         val needUpload = remote == null ||
-            kept.any { (uid, n) -> r[uid]?.updatedAt != n.updatedAt } ||
+            kept.any { (uid, n) -> r[uid]?.updatedAt != n.updatedAt } || copies.isNotEmpty() ||
             r.keys.any { it !in kept } ||
             liveTombs != remote.tombstones
-        return MergeResult(Snapshot(kept.values.toList(), liveTombs, keptAtt), upserts, upsertAtt, deletes, needUpload)
+        return MergeResult(Snapshot(kept.values.toList(), liveTombs, keptAtt), upserts, upsertAtt, deletes, needUpload, copies)
     }
 }
 
@@ -120,14 +149,14 @@ object SyncRunner {
     /** Remote attachment files nobody references are only removed once this old, so a slower device's upload isn't swept. */
     const val BLOB_GRACE_MS = 24L * 3600 * 1000
 
-    class Outcome(val upserted: List<Note>, val removedIds: List<Long>, val uploaded: Boolean, val filesPending: Int)
+    class Outcome(val upserted: List<Note>, val removedIds: List<Long>, val uploaded: Boolean, val filesPending: Int, val conflicts: Int = 0)
 
     /** One full sync round against [remote]. Blocking: call off the main thread. */
-    fun sync(store: NoteStore, remote: SyncRemote, now: Long = System.currentTimeMillis()): Outcome {
+    fun sync(store: NoteStore, remote: SyncRemote, now: Long = System.currentTimeMillis(), conflictSuffix: String = "(conflict copy)"): Outcome {
         val remoteSnap = remote.download()?.let { SyncDoc.fromJson(it) }
         val localNotes = store.allForSync()
         val local = Snapshot(localNotes, store.tombstones(), store.attachmentsByNote())
-        val result = SyncEngine.merge(local, remoteSnap, now)
+        val result = SyncEngine.merge(local, remoteSnap, now, store.syncBase(), conflictSuffix)
         val applied = store.applySync(result.upserts, result.deleteUids, result.merged.tombstones,
             localNotes.associate { it.uid to it.updatedAt }, result.upsertAttachments)
 
@@ -147,8 +176,9 @@ object SyncRunner {
             if (bytes != null) f.writeBytes(bytes) else pending++
         }
         if (result.needUpload) remote.upload(SyncDoc.toJson(result.merged))
+        store.setSyncBase(result.merged.notes.associate { it.uid to it.updatedAt })   // both sides now agree on these versions
         val keep = wanted.map { it.blobName }.toHashSet()
         remoteBlobs.filter { it.name !in keep && now - it.createdAt > BLOB_GRACE_MS }.forEach { runCatching { remote.deleteBlob(it.name) } }
-        return Outcome(applied.upserted, applied.removedIds, result.needUpload, pending)
+        return Outcome(applied.upserted, applied.removedIds, result.needUpload, pending, result.conflictCopies.size)
     }
 }

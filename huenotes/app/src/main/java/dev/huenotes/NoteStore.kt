@@ -10,7 +10,7 @@ class NoteStore(
     context: Context,
     name: String = "huenotes.db",
     val storage: AttachmentStorage = AttachmentStorage.of(context),
-) : SQLiteOpenHelper(context.applicationContext, name, null, 5) {
+) : SQLiteOpenHelper(context.applicationContext, name, null, 6) {
     /** Clock for version spacing; tests replace it. */
     var clock: () -> Long = System::currentTimeMillis
     private val appContext = context.applicationContext
@@ -27,6 +27,7 @@ class NoteStore(
         db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
         createAttachments(db)
         createVersions(db)
+        db.execSQL("CREATE TABLE sync_base(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
     }
 
     private fun createVersions(db: SQLiteDatabase) {
@@ -55,6 +56,7 @@ class NoteStore(
         }
         if (o < 4) createAttachments(db)
         if (o < 5) createVersions(db)
+        if (o < 6) db.execSQL("CREATE TABLE sync_base(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
     }
 
     private fun Cursor.toNote() = Note(
@@ -98,6 +100,24 @@ class NoteStore(
         } else { writableDatabase.update("notes", v, "id=?", arrayOf(n.id.toString())); n.id }
         notifyChanged()
         return id
+    }
+
+    // ---- sync baseline -----------------------------------------------------------------------
+
+    /** uid to the updatedAt both sides agreed on at the last completed sync (used to spot edits made on two devices). */
+    fun syncBase(): Map<String, Long> =
+        readableDatabase.rawQuery("SELECT uid, at FROM sync_base", null).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(0) to c.getLong(1) else null }.toMap()
+        }
+
+    fun setSyncBase(base: Map<String, Long>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DELETE FROM sync_base")
+            for ((u, at) in base) db.execSQL("INSERT INTO sync_base(uid, at) VALUES(?,?)", arrayOf(u, at))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 
     // ---- version history ---------------------------------------------------------------------

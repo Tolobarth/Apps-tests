@@ -35,7 +35,7 @@ object SyncManager {
         val app = c.applicationContext
         if (!running.compareAndSet(false, true)) return
         exec.execute {
-            val r = runCatching { SyncRunner.sync(NoteStore(app), DriveRemote(token)) }
+            val r = runCatching { SyncRunner.sync(NoteStore(app), DriveRemote(token), conflictSuffix = Loc.ctx(app).getString(R.string.sync_conflict_suffix)) }
             main.post {
                 running.set(false)
                 r.onSuccess { o ->
@@ -43,6 +43,7 @@ object SyncManager {
                     o.removedIds.forEach { Reminders.cancel(app, it) }
                     Prefs.setLastSync(app, System.currentTimeMillis())
                     Widgets.refresh(app)
+                    if (o.conflicts > 0) android.widget.Toast.makeText(app, Loc.ctx(app).resources.getQuantityString(R.plurals.sync_conflicts, o.conflicts, o.conflicts), android.widget.Toast.LENGTH_LONG).show()
                 }
                 onDone(r)
             }
