@@ -1,7 +1,10 @@
 package dev.huenotes
 
 import android.app.Activity
-import android.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import android.content.Context
 import android.text.InputType
 import android.util.Base64
@@ -56,8 +59,13 @@ object Lock {
     fun markLeft() { leftAt = System.currentTimeMillis() }
 
     fun prompt(a: Activity, title: String, onOk: (String) -> Unit, onCancel: (() -> Unit)? = null) {
-        val input = EditText(a).apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
-        AlertDialog.Builder(a).setTitle(title).setView(input)
+        val til = TextInputLayout(a).apply {
+            endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+            val pad = Palette.dp(a, 20); setPadding(pad, Palette.dp(a, 8), pad, 0)
+        }
+        val input = TextInputEditText(til.context).apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+        til.addView(input)
+        MaterialAlertDialogBuilder(a).setTitle(title).setView(til)
             .setPositiveButton("OK") { _, _ -> onOk(input.text.toString()) }
             .setNegativeButton("Cancel") { _, _ -> onCancel?.invoke() }
             .setCancelable(onCancel == null).show()
@@ -78,12 +86,14 @@ object Lock {
 }
 
 /** Base class: hides content and demands the password whenever the app is locked. */
-abstract class GatedActivity : Activity() {
+abstract class GatedActivity : AppCompatActivity() {
     private var dialogUp = false
 
     override fun onResume() {
         super.onResume()
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // Block screenshots / recents thumbnails only while a password protects the notes.
+        if (Lock.isSet(this)) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         val content = findViewById<View>(android.R.id.content)
         if (Lock.needsUnlock(this)) {
             content.visibility = View.INVISIBLE

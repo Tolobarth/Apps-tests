@@ -62,5 +62,5 @@ export ANDROID_HOME=/opt/android-sdk   # SDK with platform 34 + build-tools 34.0
 cd huenotes && gradle :app:assembleDebug
 ```
 
-Also implemented: password lock (UI gate only; the database is not encrypted), calendar/Today view, two home-screen widgets. Backup: JSON export/import from the menu (import adds notes, never overwrites). Tests: `cd huenotes && gradle :app:testDebugUnitTest` (7 Robolectric tests covering store, lock, widgets-when-locked, backup). Not yet done: UI testing on an emulator (no KVM in the cloud container). Not run on a
+Also implemented: password lock (UI gate only; the database is not encrypted), calendar/Today view, two home-screen widgets. Backup: JSON export/import from the menu (import adds notes, never overwrites). Tests: `cd huenotes && gradle :app:testDebugUnitTest` (7 Robolectric tests covering store, lock, widgets-when-locked, backup). UI: Material 3 (cards, colour filter, checklist editor, dark mode, adaptive icon); previews in `docs/screens/` are rendered on the JVM by `ScreenshotTest`. Screenshots are blocked only while a password is set. Not yet done: testing on a real device or emulator (no KVM in the cloud container). Not run on a
 device or emulator yet, only compiled and statically inspected.

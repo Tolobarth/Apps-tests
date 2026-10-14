@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#121316</color>
+    <color name="surface">#1E1F24</color>
+    <color name="on_surface">#E5E1E6</color>
+    <color name="on_surface_variant">#B0B0B8</color>
+    <color name="primary">#B5C0FF</color>
+    <color name="on_primary">#10228F</color>
+    <color name="primary_container">#2B3A9E</color>
+    <color name="outline">#3A3B42</color>
+    <color name="icon_bg">#FFD54F</color>
+    <color name="icon_fg">#1B1B1F</color>
+    <color name="note_text">@color/on_surface</color>
+    <color name="note_text_variant">@color/on_surface_variant</color>
+</resources>

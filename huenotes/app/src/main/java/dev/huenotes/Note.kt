@@ -14,6 +14,6 @@ data class Note(
 
     companion object {
         val COLORS = intArrayOf(0xFFFFF59D.toInt(), 0xFFFFCC80.toInt(), 0xFFEF9A9A.toInt(),
-            0xFFA5D6A7.toInt(), 0xFF90CAF9.toInt(), 0xFFCE93D8.toInt())
+            0xFFA5D6A7.toInt(), 0xFF90CAF9.toInt(), 0xFFCE93D8.toInt(), 0xFF80CBC4.toInt(), 0xFFF48FB1.toInt())
     }
 }

@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <application android:label="HueNotes" android:theme="@android:style/Theme.Material.Light.DarkActionBar">
+    <application android:label="HueNotes" android:icon="@mipmap/ic_launcher" android:theme="@style/Theme.HueNotes">
         <activity android:name=".ListActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
