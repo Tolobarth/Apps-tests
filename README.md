@@ -130,3 +130,7 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - compileSdk/targetSdk 36 (AGP 8.13.2, Kotlin 2.2.21); every screen is edge-to-edge with system-bar/keyboard insets.
 - Removed the unused `SCHEDULE_EXACT_ALARM` permission; reminders use `setAndAllowWhileIdle`, and are re-armed after an app update.
 - Not yet tested on a real Android 16 device (no emulator in the build container).
+
+### v0.9 — Version history
+- Every content change keeps the previous text as a version (min. 5 min apart, max 50 per note, local only); content replaced by a sync is kept too.
+- Editor overflow menu → "Version history" → preview → Restore. Deleting a note deletes its history. DB version 5.
