@@ -8,6 +8,7 @@ import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.net.Uri
 import android.view.ViewGroup
 import android.widget.*
 
@@ -41,6 +42,20 @@ class ListActivity : GatedActivity() {
 
     override fun onUnlocked() = refresh()
 
+    override fun onActivityResult(req: Int, res: Int, data: Intent?) {
+        super.onActivityResult(req, res, data)
+        val uri: Uri = data?.data ?: return
+        if (res != RESULT_OK) return
+        try {
+            when (req) {
+                REQ_EXPORT -> { Backup.export(this, store, uri); toast("Backup saved") }
+                REQ_IMPORT -> { toast("Imported ${Backup.import(this, store, uri)} notes"); refresh() }
+            }
+        } catch (e: Exception) { toast("Failed: ${e.message}") }
+    }
+
+    private fun toast(t: String) = Toast.makeText(this, t, Toast.LENGTH_LONG).show()
+
     private fun openEditor(id: Long) = startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id))
 
     private fun refresh() {
@@ -70,6 +85,8 @@ class ListActivity : GatedActivity() {
     override fun onCreateOptionsMenu(m: Menu): Boolean {
         m.add(0, 1, 0, "Archive / Notes")
         m.add(0, 2, 1, "Calendar / Today")
+        m.add(0, 6, 4, "Export backup")
+        m.add(0, 7, 5, "Import backup")
         return true
     }
 
@@ -87,8 +104,14 @@ class ListActivity : GatedActivity() {
             3 -> Lock.setupFlow(this) { Widgets.refresh(this) }
             4 -> Lock.changeFlow(this)
             5 -> Lock.removeFlow(this)
+            6 -> startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json").putExtra(Intent.EXTRA_TITLE, "huenotes-backup.json"), REQ_EXPORT)
+            7 -> startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*"), REQ_IMPORT)
             else -> return super.onOptionsItemSelected(i)
         }
         return true
     }
+
+    private companion object { const val REQ_EXPORT = 10; const val REQ_IMPORT = 11 }
 }

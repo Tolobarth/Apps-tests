@@ -35,3 +35,9 @@ Checklist bodies: one item per line, prefix `[x] ` done / `[ ] ` open.
 - Menu: archive/unarchive, delete, set colour, set reminder, share.
 - Reminder fires a notification; reboot re-arms future reminders.
 - Search filters title+body, case-insensitive.
+
+## Backup (added)
+
+JSON file with `app`, `version`, and a `notes` array. Export includes archived
+notes; import validates the whole file first, then adds notes (no overwrite) and
+re-arms their reminders.
