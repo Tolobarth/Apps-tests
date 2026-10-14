@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="backup_auto_title">Sauvegarde automatique</string>
+    <string name="backup_auto_off">Désactivée. Choisissez un dossier pour commencer.</string>
+    <string name="backup_auto_sum">Copie quotidienne dans « %1$s », les %2$d dernières conservées</string>
+    <string name="backup_now">Sauvegarder maintenant</string>
+    <string name="backup_last">Dernière sauvegarde : %1$s</string>
+    <string name="backup_none">Aucune sauvegarde pour l’instant</string>
+    <string name="backup_auto_stop">Arrêter les sauvegardes automatiques</string>
+    <string name="backup_err_folder">Le dossier de sauvegarde est indisponible. Choisissez-le à nouveau.</string>
+    <string name="backup_err">Échec de la sauvegarde : %1$s</string>
     <string name="sync_conflict_suffix">(copie en conflit)</string>
     <string name="action_history">Historique des versions</string>
     <string name="history_empty">Aucune version antérieure pour l’instant. Les versions sont enregistrées quand vous modifiez une note.</string>
@@ -135,10 +144,10 @@
     <string name="settings_password_change">Changer le mot de passe</string>
     <string name="settings_password_remove">Supprimer le mot de passe</string>
     <string name="settings_password_note">Le mot de passe protège l’accès à l’application ; il ne chiffre pas vos notes.</string>
-    <string name="settings_export">Exporter une sauvegarde</string>
-    <string name="settings_export_sum">Enregistrer toutes les notes dans un fichier</string>
-    <string name="settings_import">Importer une sauvegarde</string>
-    <string name="settings_import_sum">Ajouter les notes d’un fichier de sauvegarde (sans doublons)</string>
+    <string name="settings_export">Tout sauvegarder</string>
+    <string name="settings_export_sum">Notes, photos, dessins et enregistrements dans un fichier .zip</string>
+    <string name="settings_import">Restaurer une sauvegarde</string>
+    <string name="settings_import_sum">Ajouter les notes d’une sauvegarde .zip ou .json (sans doublons)</string>
     <string name="settings_snapshots">Copies automatiques</string>
     <string name="settings_snapshots_sum">Une copie par jour est conservée sur cet appareil (les 7 dernières)</string>
     <string name="settings_restore_snapshot">Restaurer une copie</string>

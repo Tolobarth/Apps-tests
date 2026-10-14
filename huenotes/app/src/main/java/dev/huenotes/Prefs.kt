@@ -69,6 +69,13 @@ object Prefs {
     fun fetchLinkTitles(c: Context) = p(c).getBoolean("linkTitles", true)
     fun setFetchLinkTitles(c: Context, v: Boolean) = p(c).edit().putBoolean("linkTitles", v).apply()
 
+    fun backupFolder(c: Context) = p(c).getString("backupFolder", "").orEmpty()
+    fun backupFolderName(c: Context) = p(c).getString("backupFolderName", "").orEmpty()
+    fun setBackupFolder(c: Context, uri: String, name: String) = p(c).edit().putString("backupFolder", uri).putString("backupFolderName", name).apply()
+    fun lastBackup(c: Context) = p(c).getLong("lastBackup", 0)
+    fun setLastBackup(c: Context, v: Long) = p(c).edit().putLong("lastBackup", v).apply()
+    fun backupError(c: Context) = p(c).getString("backupError", "").orEmpty()
+    fun setBackupError(c: Context, v: String) = p(c).edit().putString("backupError", v).apply()
     fun autoSnapshots(c: Context) = p(c).getBoolean("snapshots", true)
     fun setAutoSnapshots(c: Context, v: Boolean) = p(c).edit().putBoolean("snapshots", v).apply()
     fun lastSnapshot(c: Context) = p(c).getLong("lastSnapshot", 0)

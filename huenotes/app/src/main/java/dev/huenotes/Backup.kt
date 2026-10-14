@@ -5,17 +5,39 @@ import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** JSON backup of all live notes (including archived). Format version 2; version 1 files still import. */
+/** JSON backup of all live notes (including archived). Format version 3 adds per-note attachment lists (the files travel in a zip, see [BackupZip]); older files still import. */
 object Backup {
-    private const val VERSION = 2
+    private const val VERSION = 3
 
-    fun toJson(notes: List<Note>): String = JSONObject()
+    fun toJson(notes: List<Note>, attachments: Map<String, List<Attachment>> = emptyMap()): String = JSONObject()
         .put("app", "huenotes").put("version", VERSION)
         .put("notes", JSONArray(notes.map {
             JSONObject().put("title", it.title).put("body", it.body).put("checklist", it.checklist)
                 .put("color", it.color).put("archived", it.archived).put("pinned", it.pinned)
                 .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt).put("uid", it.uid)
+                .apply {
+                    val a = attachments[it.uid].orEmpty()
+                    if (a.isNotEmpty()) put("attachments", JSONArray(a.map { x ->
+                        JSONObject().put("uid", x.uid).put("kind", x.kind.code).put("durationMs", x.durationMs).put("createdAt", x.createdAt)
+                    }))
+                }
         })).toString(2)
+
+    private val SAFE_UID = Regex("[A-Za-z0-9-]{8,64}")
+
+    /** note uid to its attachments. Entries whose uid isn't a plain id are dropped: the uid becomes a file name. */
+    fun attachmentsFromJson(text: String): Map<String, List<Attachment>> {
+        val arr = JSONObject(text).optJSONArray("notes") ?: return emptyMap()
+        val out = LinkedHashMap<String, List<Attachment>>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i); val nu = o.optString("uid"); val at = o.optJSONArray("attachments") ?: continue
+            val list = (0 until at.length()).map { at.getJSONObject(it) }.filter { SAFE_UID.matches(it.optString("uid")) }.map {
+                Attachment(it.getString("uid"), nu, AttachmentKind.of(it.optInt("kind")), it.optLong("durationMs"), it.optLong("createdAt"))
+            }
+            if (list.isNotEmpty()) out[nu] = list
+        }
+        return out
+    }
 
     fun fromJson(text: String): List<Note> {
         val root = JSONObject(text)
@@ -35,24 +57,35 @@ object Backup {
         }
     }
 
+    /** Writes the full backup (notes and their files) as a zip. */
     fun export(c: Context, store: NoteStore, to: Uri) {
-        c.contentResolver.openOutputStream(to, "wt")!!.use { it.write(toJson(store.list(false) + store.list(true)).toByteArray()) }
+        c.contentResolver.openOutputStream(to, "wt")!!.use { BackupZip.write(store, it) }
     }
 
-    fun import(c: Context, store: NoteStore, from: Uri): Int =
-        importText(c, store, c.contentResolver.openInputStream(from)!!.use { it.readBytes().toString(Charsets.UTF_8) })
+    /** Reads a zip or a plain JSON backup. */
+    fun import(c: Context, store: NoteStore, from: Uri): Int {
+        val input = java.io.BufferedInputStream(c.contentResolver.openInputStream(from)!!)
+        input.use {
+            it.mark(4); val head = ByteArray(2); val n = it.read(head); it.reset()
+            return if (n == 2 && head[0] == 'P'.code.toByte() && head[1] == 'K'.code.toByte()) BackupZip.read(c, store, it, java.io.File(c.cacheDir, "restore-${System.nanoTime()}"))
+            else importText(c, store, it.readBytes().toString(Charsets.UTF_8))
+        }
+    }
 
-    /** Adds notes you don't already have (same title, body and creation time). Parses fully before writing. */
-    fun importText(c: Context, store: NoteStore, text: String): Int {
+    fun importText(c: Context, store: NoteStore, text: String): Int = importNotes(c, store, text).size
+
+    /** Adds notes you don't already have (same uid, or same title, body and creation time). Returns the ones added. */
+    fun importNotes(c: Context, store: NoteStore, text: String): List<Note> {
         val incoming = fromJson(text).filterNot { it.isEmpty }
         val existing = store.list(false) + store.list(true)
         val uids = existing.map { it.uid }.toHashSet()
         val have = existing.map { Triple(it.title, it.body, it.createdAt) }.toHashSet()
-        var added = 0
+        val added = ArrayList<Note>()
         incoming.forEach { n ->
             if (n.uid !in uids && have.add(Triple(n.title, n.body, n.createdAt))) {
-                Reminders.sync(c, n.copy(id = store.save(n, touch = false)))
-                added++
+                val saved = n.copy(id = store.save(n, touch = false))
+                Reminders.sync(c, saved)
+                added += saved
             }
         }
         return added

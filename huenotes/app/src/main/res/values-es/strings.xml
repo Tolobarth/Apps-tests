@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="backup_auto_title">Copia automática</string>
+    <string name="backup_auto_off">Desactivada. Elige una carpeta para empezar.</string>
+    <string name="backup_auto_sum">Copia diaria en «%1$s», se conservan las últimas %2$d</string>
+    <string name="backup_now">Hacer copia ahora</string>
+    <string name="backup_last">Última copia: %1$s</string>
+    <string name="backup_none">Aún no hay copias</string>
+    <string name="backup_auto_stop">Detener copias automáticas</string>
+    <string name="backup_err_folder">La carpeta de copias no está disponible. Elígela de nuevo.</string>
+    <string name="backup_err">Falló la copia: %1$s</string>
     <string name="sync_conflict_suffix">(copia en conflicto)</string>
     <string name="action_history">Historial de versiones</string>
     <string name="history_empty">Aún no hay versiones anteriores. Las versiones se guardan cuando cambias una nota.</string>
@@ -135,10 +144,10 @@
     <string name="settings_password_change">Cambiar contraseña</string>
     <string name="settings_password_remove">Eliminar contraseña</string>
     <string name="settings_password_note">La contraseña protege el acceso a la app; no cifra tus notas.</string>
-    <string name="settings_export">Exportar copia de seguridad</string>
-    <string name="settings_export_sum">Guardar todas las notas en un archivo</string>
-    <string name="settings_import">Importar copia de seguridad</string>
-    <string name="settings_import_sum">Añadir notas desde un archivo (sin duplicados)</string>
+    <string name="settings_export">Copia de seguridad completa</string>
+    <string name="settings_export_sum">Notas, fotos, dibujos y grabaciones en un archivo .zip</string>
+    <string name="settings_import">Restaurar copia de seguridad</string>
+    <string name="settings_import_sum">Añadir notas de una copia .zip o .json (sin duplicados)</string>
     <string name="settings_snapshots">Copias automáticas</string>
     <string name="settings_snapshots_sum">Se guarda una copia al día en este dispositivo (las últimas 7)</string>
     <string name="settings_restore_snapshot">Restaurar una copia</string>

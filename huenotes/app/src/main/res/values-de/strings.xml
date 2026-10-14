@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="backup_auto_title">Automatische Sicherung</string>
+    <string name="backup_auto_off">Aus. Wähle einen Ordner, um zu starten.</string>
+    <string name="backup_auto_sum">Tägliche Kopie in „%1$s“, die letzten %2$d bleiben erhalten</string>
+    <string name="backup_now">Jetzt sichern</string>
+    <string name="backup_last">Letzte Sicherung: %1$s</string>
+    <string name="backup_none">Noch keine Sicherung</string>
+    <string name="backup_auto_stop">Automatische Sicherung beenden</string>
+    <string name="backup_err_folder">Der Sicherungsordner ist nicht verfügbar. Wähle ihn erneut.</string>
+    <string name="backup_err">Sicherung fehlgeschlagen: %1$s</string>
     <string name="sync_conflict_suffix">(Konfliktkopie)</string>
     <string name="action_history">Versionsverlauf</string>
     <string name="history_empty">Noch keine früheren Versionen. Versionen werden gespeichert, wenn du eine Notiz änderst.</string>
@@ -135,10 +144,10 @@
     <string name="settings_password_change">Passwort ändern</string>
     <string name="settings_password_remove">Passwort entfernen</string>
     <string name="settings_password_note">Das Passwort schützt den Zugang zur App; es verschlüsselt deine Notizen nicht.</string>
-    <string name="settings_export">Sicherung exportieren</string>
-    <string name="settings_export_sum">Alle Notizen in einer Datei speichern</string>
-    <string name="settings_import">Sicherung importieren</string>
-    <string name="settings_import_sum">Notizen aus einer Sicherungsdatei hinzufügen (ohne Duplikate)</string>
+    <string name="settings_export">Alles sichern</string>
+    <string name="settings_export_sum">Notizen, Fotos, Zeichnungen und Aufnahmen in einer .zip-Datei</string>
+    <string name="settings_import">Aus Sicherung wiederherstellen</string>
+    <string name="settings_import_sum">Notizen aus einer .zip- oder .json-Sicherung hinzufügen (ohne Duplikate)</string>
     <string name="settings_snapshots">Automatische Kopien</string>
     <string name="settings_snapshots_sum">Täglich wird eine Kopie auf diesem Gerät gespeichert (die letzten 7)</string>
     <string name="settings_restore_snapshot">Kopie wiederherstellen</string>

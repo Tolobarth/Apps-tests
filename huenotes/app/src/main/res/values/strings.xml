@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HueNotes</string>
+    <string name="backup_auto_title">Automatic backup</string>
+    <string name="backup_auto_off">Off. Choose a folder to start.</string>
+    <string name="backup_auto_sum">Daily copy to “%1$s”, keeping the last %2$d</string>
+    <string name="backup_now">Back up now</string>
+    <string name="backup_last">Last backup %1$s</string>
+    <string name="backup_none">No backup yet</string>
+    <string name="backup_auto_stop">Stop automatic backups</string>
+    <string name="backup_err_folder">The backup folder isn’t available. Choose it again.</string>
+    <string name="backup_err">Backup failed: %1$s</string>
     <string name="sync_conflict_suffix">(conflict copy)</string>
     <string name="action_history">Version history</string>
     <string name="history_empty">No earlier versions yet. Versions are saved when you change a note.</string>
@@ -135,10 +144,10 @@
     <string name="settings_password_change">Change password</string>
     <string name="settings_password_remove">Remove password</string>
     <string name="settings_password_note">The password protects access to the app; it does not encrypt your notes.</string>
-    <string name="settings_export">Export backup</string>
-    <string name="settings_export_sum">Save all notes to a file</string>
-    <string name="settings_import">Import backup</string>
-    <string name="settings_import_sum">Add notes from a backup file (no duplicates)</string>
+    <string name="settings_export">Back up everything</string>
+    <string name="settings_export_sum">Notes, photos, drawings and recordings in one .zip file</string>
+    <string name="settings_import">Restore from backup</string>
+    <string name="settings_import_sum">Add notes from a .zip or .json backup (no duplicates)</string>
     <string name="settings_snapshots">Automatic snapshots</string>
     <string name="settings_snapshots_sum">One copy a day stays on this device (the last 7)</string>
     <string name="settings_restore_snapshot">Restore a snapshot</string>

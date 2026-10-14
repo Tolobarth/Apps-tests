@@ -24,8 +24,15 @@ import java.util.Date
 class SettingsActivity : GatedActivity() {
     private lateinit var list: LinearLayout
 
-    private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) guarded { Backup.export(this, NoteStore(this), uri); toast(getString(R.string.backup_saved)) }
+    }
+    private val folderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) guarded {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            Prefs.setBackupFolder(this, uri.toString(), AutoBackup.displayName(this, uri)); Prefs.setBackupError(this, "")
+            AutoBackup.apply(this); render(); backupNow()
+        }
     }
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) guarded { toast(imported(Backup.import(this, NoteStore(this), uri))) }
@@ -119,8 +126,18 @@ class SettingsActivity : GatedActivity() {
         note(R.string.settings_password_note)
 
         section(R.string.settings_backup)
-        row(getString(R.string.settings_export), getString(R.string.settings_export_sum)) { exportLauncher.launch("huenotes-backup.json") }
+        row(getString(R.string.settings_export), getString(R.string.settings_export_sum)) { exportLauncher.launch("huenotes-backup.zip") }
         row(getString(R.string.settings_import), getString(R.string.settings_import_sum)) { importLauncher.launch(arrayOf("*/*")) }
+        run {
+            val err = Prefs.backupError(this); val last = Prefs.lastBackup(this)
+            if (!AutoBackup.enabled(this)) row(getString(R.string.backup_auto_title), getString(R.string.backup_auto_off)) { folderLauncher.launch(null) }
+            else {
+                row(getString(R.string.backup_auto_title), getString(R.string.backup_auto_sum, Prefs.backupFolderName(this), AutoBackup.KEEP)) { folderLauncher.launch(null) }
+                row(getString(R.string.backup_now), if (err.isNotEmpty()) err else if (last == 0L) getString(R.string.backup_none)
+                    else getString(R.string.backup_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(last)))) { backupNow() }
+                row(getString(R.string.backup_auto_stop)) { Prefs.setBackupFolder(this, "", ""); Prefs.setBackupError(this, ""); AutoBackup.apply(this); render() }
+            }
+        }
         switchRow(getString(R.string.settings_snapshots), getString(R.string.settings_snapshots_sum), Prefs.autoSnapshots(this)) { Prefs.setAutoSnapshots(this, it) }
         row(getString(R.string.settings_restore_snapshot)) { pickSnapshot() }
 
@@ -232,6 +249,14 @@ class SettingsActivity : GatedActivity() {
         MaterialAlertDialogBuilder(this).setTitle(R.string.sync_disconnect_title).setMessage(R.string.sync_disconnect_msg)
             .setPositiveButton(R.string.sync_disconnect) { _, _ -> Prefs.setSyncEmail(this, ""); Prefs.setLastSync(this, 0); Prefs.setSyncError(this, ""); SyncScheduler.apply(this); render() }
             .setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private fun backupNow() {
+        toast(getString(R.string.sync_running))
+        Thread {
+            val r = AutoBackup.runAndRecord(applicationContext)
+            runOnUiThread { render(); toast(if (r.isSuccess) getString(R.string.backup_saved) else Prefs.backupError(this)) }
+        }.start()
     }
 
     private fun imported(n: Int) = resources.getQuantityString(R.plurals.backup_imported, n, n)

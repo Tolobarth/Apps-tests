@@ -8,5 +8,6 @@ class HueApp : Application() {
         Prefs.applyTheme(this)
         Prefs.applyLanguage(this)
         SyncScheduler.apply(this)
+        AutoBackup.apply(this)
     }
 }
