@@ -338,11 +338,20 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun renderMeta() {
-        val text = if (inChecklist()) currentItems().joinToString(" ") { it.text } else bodyEdit.text.toString()
-        val words = text.trim().split(Regex("\\s+")).count { it.isNotBlank() }
+        if (!::linkChip.isInitialized) return      // views are still being set up
         val base = if (note.id == 0L) getString(R.string.meta_new)
         else getString(R.string.meta_edited, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.modifiedAt)))
-        meta.text = "$base  ·  " + resources.getQuantityString(R.plurals.word_count, words, words)
+        // A list is counted in items (and how many are done); a text note in words.
+        val size = if (inChecklist()) {
+            val items = currentItems().filter { it.text.isNotBlank() }
+            val done = items.count { it.done }
+            resources.getQuantityString(R.plurals.item_count, items.size, items.size) +
+                if (done > 0) "  ·  " + resources.getQuantityString(R.plurals.items_done, done, done) else ""
+        } else {
+            val words = bodyEdit.text.toString().trim().split(Regex("\\s+")).count { it.isNotBlank() }
+            resources.getQuantityString(R.plurals.word_count, words, words)
+        }
+        meta.text = "$base  ·  $size"
         if (note.reminderAt > 0) {
             chip.text = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.reminderAt))
             chip.visibility = View.VISIBLE
@@ -379,17 +388,22 @@ class EditorActivity : GatedActivity() {
             else text.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
             text.alpha = if (check.isChecked) 0.5f else 1f
         }
-        strike(); check.setOnCheckedChangeListener { _, _ -> strike() }
+        strike(); check.setOnCheckedChangeListener { _, _ -> strike(); renderMeta() }
+        text.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(e: Editable?) = renderMeta()
+            override fun beforeTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
+            override fun onTextChanged(a: CharSequence?, b: Int, c: Int, d: Int) = Unit
+        })
         text.setOnEditorActionListener { _, action, _ ->
             if (action == EditorInfo.IME_ACTION_NEXT) { addRow(Checklist.Item(false, ""), list.indexOfChild(row) + 1, true); true } else false
         }
         text.setOnKeyListener { _, code, ev ->
             if (code == KeyEvent.KEYCODE_DEL && ev.action == KeyEvent.ACTION_DOWN && text.text.isEmpty() && list.childCount > 1) {
-                val idx = list.indexOfChild(row); list.removeView(row)
+                val idx = list.indexOfChild(row); list.removeView(row); renderMeta()
                 (list.getChildAt((idx - 1).coerceAtLeast(0)).findViewById<EditText>(R.id.text)).requestFocus(); true
             } else false
         }
-        row.findViewById<View>(R.id.remove).setOnClickListener { if (list.childCount > 1) list.removeView(row) else text.setText("") }
+        row.findViewById<View>(R.id.remove).setOnClickListener { if (list.childCount > 1) list.removeView(row) else text.setText(""); renderMeta() }
         if (at < 0) list.addView(row) else list.addView(row, at)
         if (focus) text.requestFocus()
     }

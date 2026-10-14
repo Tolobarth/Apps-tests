@@ -210,6 +210,14 @@
         <item quantity="one">%1$d palabra</item>
         <item quantity="other">%1$d palabras</item>
     </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
+    <plurals name="items_done">
+        <item quantity="one">%1$d hecho</item>
+        <item quantity="other">%1$d hechos</item>
+    </plurals>
     <plurals name="reminder_count">
         <item quantity="one">%1$d recordatorio</item>
         <item quantity="other">%1$d recordatorios</item>

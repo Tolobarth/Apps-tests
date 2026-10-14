@@ -210,6 +210,14 @@
         <item quantity="one">%1$d word</item>
         <item quantity="other">%1$d words</item>
     </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="items_done">
+        <item quantity="one">%1$d done</item>
+        <item quantity="other">%1$d done</item>
+    </plurals>
     <plurals name="reminder_count">
         <item quantity="one">%1$d reminder</item>
         <item quantity="other">%1$d reminders</item>
