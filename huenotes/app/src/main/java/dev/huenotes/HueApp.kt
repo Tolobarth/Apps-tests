@@ -7,5 +7,6 @@ class HueApp : Application() {
         super.onCreate()
         Prefs.applyTheme(this)
         Prefs.applyLanguage(this)
+        SyncScheduler.apply(this)
     }
 }

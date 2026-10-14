@@ -22,29 +22,38 @@ object SyncManager {
 
     fun isConnected(c: Context) = Prefs.syncEmail(c).isNotEmpty()
 
+    fun request(): AuthorizationRequest = AuthorizationRequest.builder()
+        .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata"), Scope(Scopes.EMAIL))).build()
+
+    fun tryLock() = running.compareAndSet(false, true)
+    fun unlock() = running.set(false)
+
+    /** Records a finished sync (from the app or the background worker): reminders, status line, widgets, conflict notice. */
+    fun record(app: Context, r: Result<SyncRunner.Outcome>) {
+        r.onSuccess { o ->
+            o.upserted.forEach { Reminders.sync(app, it) }
+            o.removedIds.forEach { Reminders.cancel(app, it) }
+            Prefs.setLastSync(app, System.currentTimeMillis()); Prefs.setSyncError(app, "")
+            Widgets.refresh(app)
+            if (o.conflicts > 0) main.post {
+                android.widget.Toast.makeText(app, Loc.ctx(app).resources.getQuantityString(R.plurals.sync_conflicts, o.conflicts, o.conflicts), android.widget.Toast.LENGTH_LONG).show()
+            }
+        }.onFailure { Prefs.setSyncError(app, SyncStatus.describe(app, it)) }
+    }
+
     /** Asks Google for Drive app-data access plus the account email. May need a consent screen (hasResolution). */
     fun authorize(activity: Activity): Task<AuthorizationResult> =
-        Identity.getAuthorizationClient(activity).authorize(
-            AuthorizationRequest.builder()
-                .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata"), Scope(Scopes.EMAIL)))
-                .build()
-        )
+        Identity.getAuthorizationClient(activity).authorize(request())
 
     /** Runs one sync in the background. Ignored when one is already running. */
     fun run(c: Context, token: String, onDone: (Result<SyncRunner.Outcome>) -> Unit = {}) {
         val app = c.applicationContext
-        if (!running.compareAndSet(false, true)) return
+        if (!tryLock()) return
         exec.execute {
             val r = runCatching { SyncRunner.sync(NoteStore(app), DriveRemote(token), conflictSuffix = Loc.ctx(app).getString(R.string.sync_conflict_suffix)) }
             main.post {
-                running.set(false)
-                r.onSuccess { o ->
-                    o.upserted.forEach { Reminders.sync(app, it) }
-                    o.removedIds.forEach { Reminders.cancel(app, it) }
-                    Prefs.setLastSync(app, System.currentTimeMillis())
-                    Widgets.refresh(app)
-                    if (o.conflicts > 0) android.widget.Toast.makeText(app, Loc.ctx(app).resources.getQuantityString(R.plurals.sync_conflicts, o.conflicts, o.conflicts), android.widget.Toast.LENGTH_LONG).show()
-                }
+                unlock()
+                record(app, r)
                 onDone(r)
             }
         }

@@ -212,7 +212,11 @@
     <string name="sync_last">Dernière synchronisation : %1$s</string>
     <string name="sync_never">Jamais synchronisé</string>
     <string name="sync_auto">Synchroniser automatiquement</string>
-    <string name="sync_auto_sum">À l’ouverture de l’application</string>
+    <string name="sync_auto_sum">En arrière-plan, quand vous êtes en ligne, et après les modifications</string>
+    <string name="sync_status_error">Échec de la synchronisation : %1$s</string>
+    <string name="sync_err_offline">Pas de connexion Internet. Vos notes seront synchronisées au retour de la connexion.</string>
+    <string name="sync_err_signin">La connexion Google a expiré. Ouvrez les paramètres et touchez « Synchroniser maintenant » pour vous reconnecter.</string>
+    <string name="sync_err_busy">Google est occupé. HueNotes réessaiera plus tard.</string>
     <string name="sync_disconnect">Déconnecter</string>
     <string name="sync_disconnect_title">Arrêter la synchronisation ?</string>
     <string name="sync_disconnect_msg">Vos notes restent sur cet appareil. La copie dans le stockage d’application de votre Google Drive est conservée.</string>

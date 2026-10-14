@@ -291,11 +291,11 @@ class NoteStore(
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
         staleFiles.forEach { storage.file(it).delete() }
-        notifyChanged()
+        notifyChanged(syncSoon = false)
         return Applied(upserted, removed)
     }
 
-    private fun notifyChanged() = Widgets.refresh(appContext)
+    private fun notifyChanged(syncSoon: Boolean = true) { Widgets.refresh(appContext); if (syncSoon) SyncScheduler.requestSoon(appContext) }
 
     companion object {
         const val VERSION_SPACING_MS = 5L * 60 * 1000

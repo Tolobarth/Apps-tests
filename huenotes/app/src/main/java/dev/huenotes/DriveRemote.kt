@@ -36,7 +36,7 @@ class DriveRemote(private val token: String, private val base: String = "https:/
         }
         val code = c.responseCode
         val bytes = (if (code in 200..299) c.inputStream else c.errorStream)?.use { it.readBytes() } ?: ByteArray(0)
-        if (code !in 200..299) throw IOException("Google Drive error $code${if (bytes.isNotEmpty()) ": " + bytes.toString(Charsets.UTF_8).take(200) else ""}")
+        if (code !in 200..299) throw DriveException(code, "Google Drive error $code${if (bytes.isNotEmpty()) ": " + bytes.toString(Charsets.UTF_8).take(200) else ""}")
         return bytes
     }
 
@@ -106,3 +106,6 @@ class DriveRemote(private val token: String, private val base: String = "https:/
         return 0
     }
 }
+
+/** A non-2xx answer from Google Drive; [code] is the HTTP status. */
+class DriveException(val code: Int, message: String) : IOException(message)

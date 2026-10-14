@@ -212,7 +212,11 @@
     <string name="sync_last">Last synced %1$s</string>
     <string name="sync_never">Never synced</string>
     <string name="sync_auto">Sync automatically</string>
-    <string name="sync_auto_sum">When you open the app</string>
+    <string name="sync_auto_sum">In the background, when online, and after changes</string>
+    <string name="sync_status_error">Couldn’t sync: %1$s</string>
+    <string name="sync_err_offline">No internet connection. Your notes will sync when you’re back online.</string>
+    <string name="sync_err_signin">Google sign-in expired. Open Settings and tap “Sync now” to reconnect.</string>
+    <string name="sync_err_busy">Google is busy right now. HueNotes will try again later.</string>
     <string name="sync_disconnect">Disconnect</string>
     <string name="sync_disconnect_title">Stop syncing?</string>
     <string name="sync_disconnect_msg">Your notes stay on this device. The copy in your Google Drive app storage is kept.</string>

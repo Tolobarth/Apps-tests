@@ -76,9 +76,10 @@ class SettingsActivity : GatedActivity() {
         } else {
             val last = Prefs.lastSync(this)
             row(getString(R.string.sync_account), Prefs.syncEmail(this))
-            row(getString(R.string.sync_now), if (last == 0L) getString(R.string.sync_never)
+            val err = Prefs.syncError(this)
+            row(getString(R.string.sync_now), if (err.isNotEmpty()) getString(R.string.sync_status_error, err) else if (last == 0L) getString(R.string.sync_never)
                 else getString(R.string.sync_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(last)))) { connect() }
-            switchRow(getString(R.string.sync_auto), getString(R.string.sync_auto_sum), Prefs.autoSync(this)) { Prefs.setAutoSync(this, it) }
+            switchRow(getString(R.string.sync_auto), getString(R.string.sync_auto_sum), Prefs.autoSync(this)) { Prefs.setAutoSync(this, it); SyncScheduler.apply(this) }
             row(getString(R.string.sync_disconnect)) { confirmDisconnect() }
         }
 
@@ -218,18 +219,18 @@ class SettingsActivity : GatedActivity() {
         toast(getString(R.string.sync_running))
         render()
         SyncManager.run(this, token) { res ->
-            res.onSuccess { toast(getString(R.string.sync_done)); render() }.onFailure { syncFailed(it) }
+            SyncScheduler.apply(this)
+            res.onSuccess { toast(getString(R.string.sync_done)); render() }.onFailure { syncFailed(it); render() }
         }
     }
 
     private fun syncFailed(e: Throwable) {
-        if (e is ApiException && e.statusCode == 10) toast(getString(R.string.sync_not_configured))   // DEVELOPER_ERROR: OAuth client missing
-        else toast(getString(R.string.sync_failed, e.message ?: e.javaClass.simpleName))
+        toast(SyncStatus.describe(this, e))
     }
 
     private fun confirmDisconnect() {
         MaterialAlertDialogBuilder(this).setTitle(R.string.sync_disconnect_title).setMessage(R.string.sync_disconnect_msg)
-            .setPositiveButton(R.string.sync_disconnect) { _, _ -> Prefs.setSyncEmail(this, ""); Prefs.setLastSync(this, 0); render() }
+            .setPositiveButton(R.string.sync_disconnect) { _, _ -> Prefs.setSyncEmail(this, ""); Prefs.setLastSync(this, 0); Prefs.setSyncError(this, ""); SyncScheduler.apply(this); render() }
             .setNegativeButton(R.string.btn_cancel, null).show()
     }
 

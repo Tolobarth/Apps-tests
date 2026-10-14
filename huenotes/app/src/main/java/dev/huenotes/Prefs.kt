@@ -61,6 +61,8 @@ object Prefs {
     fun setSyncEmail(c: Context, v: String) = p(c).edit().putString("syncEmail", v).apply()
     fun autoSync(c: Context) = p(c).getBoolean("autoSync", true)
     fun setAutoSync(c: Context, v: Boolean) = p(c).edit().putBoolean("autoSync", v).apply()
+    fun syncError(c: Context) = p(c).getString("syncError", "").orEmpty()
+    fun setSyncError(c: Context, v: String) = p(c).edit().putString("syncError", v).apply()
     fun lastSync(c: Context) = p(c).getLong("lastSync", 0)
     fun setLastSync(c: Context, v: Long) = p(c).edit().putLong("lastSync", v).apply()
 
