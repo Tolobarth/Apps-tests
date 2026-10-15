@@ -18,7 +18,7 @@ import androidx.core.content.ContextCompat
 import java.util.Locale
 
 /**
- * First use of dictation or transcripts: makes sure the phone's speech service (normally Google's) has the language, and lets
+ * First use of transcripts (Android's recogniser path): makes sure the phone's speech service (normally Google's) has the language, and lets
  * the person download it if not. The download is done by that service, from its own servers; HueNotes ships no speech model.
  */
 object SpeechSetup {

@@ -133,11 +133,11 @@ class MlKitTranscriber(
     private var job: Job? = null
     private val log = ArrayList<String>()
     private val t0 = SystemClock.elapsedRealtime()
-    val text get() = DictationText.join(parts)
+    val text get() = SpeechText.join(parts)
     val details get() = synchronized(log) { log.joinToString("\n") }
 
     private fun note(s: String) = synchronized(log) { if (log.size < 300) log += "+%.1fs ml-kit: %s".format((SystemClock.elapsedRealtime() - t0) / 1000.0, s) }
-    private fun shown() = DictationText.join(parts + listOfNotNull(partial.takeIf { it.isNotBlank() }))
+    private fun shown() = SpeechText.join(parts + listOfNotNull(partial.takeIf { it.isNotBlank() }))
     private fun position() = fed * 1000L / Pcm.BYTES_PER_SEC
 
     fun start() {
@@ -209,7 +209,7 @@ class MlKitTranscriber(
         job?.cancel()
         runCatching { read?.close() }; read = null
         // Always release Google's speech app, even if it never confirms the stop: a session left open can keep it busy
-        // and stop dictation from hearing anything afterwards.
+        // and block it for other apps afterwards.
         scope.launch { try { kotlinx.coroutines.withTimeoutOrNull(2000) { engine.stop() } } finally { engine.close() } }
         onEnd(text, error)
     }

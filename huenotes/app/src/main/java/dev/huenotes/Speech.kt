@@ -31,9 +31,9 @@ import java.util.Locale
 object Speech {
     fun onDevice(c: Context) = Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(c) }.getOrDefault(false)
     fun online(c: Context) = Prefs.onlineSpeech(c) && SpeechRecognizer.isRecognitionAvailable(c)
-    fun canDictate(c: Context) = onDevice(c) || online(c)
+    fun canRecognise(c: Context) = onDevice(c) || online(c)
     /** Feeding a recording to the recogniser needs Android 13. */
-    fun canTranscribe(c: Context) = (Build.VERSION.SDK_INT >= 33 && canDictate(c)) || MlKitSpeech.mayWork(c)
+    fun canTranscribe(c: Context) = (Build.VERSION.SDK_INT >= 33 && canRecognise(c)) || MlKitSpeech.mayWork(c)
 
     /** [online] picks the phone's regular recogniser (only when the person allowed it); otherwise on-device when available. */
     fun create(c: Context, online: Boolean = false): SpeechRecognizer =
@@ -79,8 +79,8 @@ object Speech {
     fun best(b: Bundle?): String = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
 }
 
-/** Where dictated words go in text that is already there. */
-object DictationText {
+/** Where recognised words go in text that is already there. */
+object SpeechText {
     private fun startsSentence(before: String): Boolean {
         val t = before.trimEnd(' ', '\t')
         return t.isEmpty() || t.last() == '\n' || t.last() in ".!?…"
@@ -101,116 +101,6 @@ object DictationText {
 
     /** Joins recognised pieces into one text. */
     fun join(parts: List<String>): String = parts.fold("") { acc, s -> insert(acc, acc.length, s).first }
-}
-
-/**
- * Continuous dictation: listens phrase after phrase until [stop] (or silence after at least one phrase). [onUpdate] gets the
- * text so far plus the phrase being heard; [onEnd] gets the final text and, if it ended badly, an error code.
- */
-class Dictation(
-    private val c: Context,
-    private val onUpdate: (text: String, hearing: String) -> Unit,
-    private val onEnd: (text: String, error: Int?) -> Unit,
-    private val language: String = Speech.language(c),
-    private val newRecognizer: () -> SpeechRecognizer = { Speech.create(c) },
-    /** What the language check said, for the log. */
-    private val setup: String = "",
-) {
-    private var recognizer = newRecognizer()
-    private var lastSignal = 0L
-    private var ready = false
-    private var restarts = 0
-    private val parts = ArrayList<String>()
-    private var stopping = false
-    private var ended = false
-    private var events = 0
-    private val main = Handler(Looper.getMainLooper())
-    private val log = ArrayList<String>()
-    private val t0 = android.os.SystemClock.elapsedRealtime()
-    val text get() = DictationText.join(parts)
-    /** What happened, for a shared report: recogniser events and timings, no words. */
-    val details get() = log.joinToString("\n")
-
-    private fun note(s: String) { if (log.size < 200) log += "+%.1fs %s".format((android.os.SystemClock.elapsedRealtime() - t0) / 1000.0, s) }
-    private fun ev(name: String) {
-        events++; lastSignal = android.os.SystemClock.elapsedRealtime()
-        if (name == "ready") ready = true
-        if (events <= 30 || !name.startsWith("rms")) note(name)
-    }
-
-    internal val listener = object : RecognitionListener {
-        override fun onPartialResults(b: Bundle?) { ev("partial ${Speech.best(b).length} chars"); onUpdate(text, Speech.best(b)) }
-        override fun onResults(b: Bundle?) {
-            ev("results ${Speech.best(b).length} chars")
-            Speech.best(b).takeIf { it.isNotEmpty() }?.let { parts += it }
-            onUpdate(text, "")
-            if (stopping) finish(null) else main.post { if (!ended) listen() }    // keep going until the person stops
-        }
-        override fun onError(error: Int) { ev("error $error"); finish(if (Speech.isSilence(error) && (parts.isNotEmpty() || stopping)) null else error) }
-        override fun onReadyForSpeech(p: Bundle?) = ev("ready")
-        override fun onBeginningOfSpeech() = ev("speech")
-        override fun onRmsChanged(v: Float) = ev("rms")
-        override fun onBufferReceived(b: ByteArray?) = ev("buffer")
-        override fun onEndOfSpeech() = ev("end-of-speech")
-        override fun onEvent(t: Int, p: Bundle?) = ev("event $t")
-    }
-
-    fun start() {
-        note("start $language" + if (setup.isNotEmpty()) " ($setup)" else "")
-        recognizer.setRecognitionListener(listener); listen()
-        main.postDelayed(stallCheck, 1000)
-        // A speech service that never answers at all (not even "ready") would leave "Speak now" up forever.
-        main.postDelayed({ if (!ended && events == 0) { note("no answer from the speech service"); recognizer.cancel(); finish(NO_ANSWER) } }, NO_ANSWER_MS)
-    }
-
-    private fun listen() { note("listen"); lastSignal = android.os.SystemClock.elapsedRealtime(); recognizer.startListening(Speech.intent(c, language)) }
-
-    /**
-     * While listening the recogniser reports the sound level many times a second. If that stops for [STALL_MS], the
-     * microphone isn't delivering sound: start over once with a fresh recogniser, then give up with [AUDIO_STALLED].
-     */
-    private val stallCheck = object : Runnable {
-        override fun run() {
-            if (ended) return
-            if (!stopping && ready && android.os.SystemClock.elapsedRealtime() - lastSignal > STALL_MS) {
-                if (restarts == 0) {
-                    restarts++; note("no sound for ${STALL_MS / 1000} s, starting again")
-                    runCatching { recognizer.cancel() }; runCatching { recognizer.destroy() }
-                    ready = false
-                    recognizer = newRecognizer(); recognizer.setRecognitionListener(listener); listen()
-                } else { note("no sound again"); runCatching { recognizer.cancel() }; finish(AUDIO_STALLED); return }
-            }
-            main.postDelayed(this, 1000)
-        }
-    }
-
-    /** Stops listening; what is being said right now is still recognised and kept. */
-    fun stop() {
-        if (ended) return
-        stopping = true; recognizer.stopListening()
-        main.postDelayed({ cancel() }, STOP_GRACE_MS)    // never hang if the recogniser doesn't answer
-    }
-
-    /** Ends at once, keeping only what was already recognised. */
-    fun cancel() { if (!ended) { recognizer.cancel(); finish(null) } }
-
-    private fun finish(error: Int?) {
-        if (ended) return
-        ended = true
-        note("finished" + (error?.let { " with $it" } ?: "") + ", ${parts.size} phrases")
-        recognizer.destroy()
-        onEnd(text, error)
-    }
-
-    companion object {
-        const val STOP_GRACE_MS = 4000L
-        const val NO_ANSWER_MS = 8000L
-        /** The speech service gave no sign of life at all. */
-        const val NO_ANSWER = -3
-        /** The microphone stopped delivering sound twice. */
-        const val AUDIO_STALLED = -4
-        const val STALL_MS = 4000L
-    }
 }
 
 /** Turning a recording into the 16 kHz mono 16-bit PCM the recogniser reads. */
@@ -367,7 +257,7 @@ class Transcriber(
     private var pcm = ByteArray(0)
     private val log = ArrayList<String>()
     private val t0 = SystemClock.elapsedRealtime()
-    val text get() = DictationText.join(parts)
+    val text get() = SpeechText.join(parts)
     /** What happened, for a shared report: modes, recogniser events, timings. No transcript text. */
     val details get() = synchronized(log) { log.joinToString("\n") }
     var mode = Mode.SEGMENTED; private set

@@ -276,13 +276,7 @@
         <item quantity="other">%1$d arquivos</item>
     </plurals>
 
-    <!-- Dictation and transcription (v0.15) -->
-    <string name="add_dictate">Ditar</string>
-    <string name="cd_dictate">Ditar</string>
-    <string name="dictate_title">Ouvindo…</string>
-    <string name="dictate_hint">Fale agora</string>
-    <string name="dictate_done">Concluir</string>
-    <string name="speech_permission">Permita o acesso ao microfone para ditar.</string>
+    <!-- Transcription (v0.15) -->
     <string name="transcribe">Transcrever</string>
     <string name="transcribe_title">Transcrevendo…</string>
     <string name="transcribe_stop">Parar</string>
@@ -293,16 +287,16 @@
     <string name="speech_err_network">O reconhecimento de voz precisa de conexão agora.</string>
     <string name="speech_err_busy">O reconhecimento de voz está ocupado. Tente de novo em instantes.</string>
     <string name="speech_err_other">O reconhecimento de voz parou inesperadamente.</string>
-    <string name="speech_unavailable">Este celular não reconhece voz sozinho. Você pode permitir o reconhecimento on-line nas Configurações; sua voz é então enviada ao serviço de voz do celular.</string>
+    <string name="speech_unavailable">Este celular não reconhece voz sozinho. Você pode permitir o reconhecimento on-line nas Configurações; as gravações são então enviadas ao serviço de voz do celular.</string>
     <string name="speech_unavailable_none">Este celular não tem reconhecimento de voz.</string>
     <string name="speech_open_settings">Configurações</string>
     <string name="settings_online_speech">Reconhecimento de voz on-line</string>
-    <string name="settings_online_speech_sum">Este celular não reconhece voz sozinho. Se ativado, sua voz é enviada ao serviço de voz do celular (geralmente o Google) para ditados e transcrições.</string>
-    <string name="settings_online_speech_sum_ondevice">Não é necessário: este celular reconhece voz sozinho, então sua voz fica no aparelho.</string>
+    <string name="settings_online_speech_sum">Este celular não reconhece voz sozinho. Se ativado, as gravações são enviadas ao serviço de voz do celular (geralmente o Google) para serem transcritas.</string>
+    <string name="settings_online_speech_sum_ondevice">Não é necessário: este celular reconhece voz sozinho, então suas gravações ficam no aparelho.</string>
 
     <!-- Speech setup: language download on first use (v0.16) -->
     <string name="speech_setup_title">Reconhecimento de voz</string>
-    <string name="speech_setup_msg">Para ditar e transcrever em %1$s, o serviço de voz do celular (Google) precisa baixá-lo uma vez. Depois funciona sem internet e sua voz fica no aparelho.</string>
+    <string name="speech_setup_msg">Para transcrever em %1$s, o serviço de voz do celular (Google) precisa baixá-lo uma vez. Depois funciona sem internet e suas gravações ficam no aparelho.</string>
     <string name="speech_not_now">Agora não</string>
     <string name="speech_downloading_title">Baixando %1$s…</string>
     <string name="speech_hide">Ocultar</string>
@@ -350,7 +344,7 @@
     <string name="crash_dismiss">Dispensar</string>
 
     <!-- v0.20 -->
-    <string name="transcribe_not_accepted">O serviço de voz do celular não aceitou a gravação, então ela não pôde ser transcrita. O ditado continua funcionando. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
+    <string name="transcribe_not_accepted">O serviço de voz do celular não aceitou a gravação, então ela não pôde ser transcrita. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
     <string name="transcribe_share_details">Compartilhar detalhes</string>
 
     <!-- v0.21 -->
@@ -385,8 +379,4 @@
     <string name="type_lists">Listas</string>
     <string name="type_files">Arquivos</string>
 
-    <!-- v0.24 -->
-    <string name="dictate_no_answer">O serviço de voz do celular não respondeu, então nada pôde ser ouvido. Tente de novo; se continuar, reinicie o celular. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
-    <string name="dictate_nothing">Nada foi ouvido. Fale quando “Ouvindo…” aparecer e toque em Concluir. Se continuar, você pode compartilhar os detalhes para ajudar a corrigir.</string>
-    <string name="dictate_stalled">O microfone parou de enviar som ao serviço de voz, mesmo depois de recomeçar. Outro app pode estar usando o microfone, ou o serviço de voz travou: reiniciar o celular costuma resolver. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
 </resources>

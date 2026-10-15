@@ -29,7 +29,7 @@ Kit data disclosure page for its entry (it was not listed when this was written)
 Google's ML Kit data disclosure (diagnostics), like the other ML Kit SDKs.
 
 ## Speech
-Dictation uses the phone's speech service; on-device by default, so no audio leaves the phone through HueNotes. With "Online speech
+Transcription (when ML Kit isn't available) uses the phone's speech service; on-device by default, so no audio leaves the phone through HueNotes. With "Online speech
 recognition" allowed, audio goes to the phone's speech service (a system app, normally Google's), not to the developer; check whether
 Play counts this as data the app shares.
 
@@ -40,7 +40,7 @@ Play counts this as data the app shares.
 (Google's guidance allows data processed only on-device or sent to the user's own account to be treated as not collected by the developer; confirm with the current Play policy text.)
 
 ## Permissions to justify
-RECORD_AUDIO (voice notes and dictation), POST_NOTIFICATIONS (reminders), RECEIVE_BOOT_COMPLETED (re-arm reminders after reboot/update), INTERNET (sync, link titles, speech/translation language packs, ML Kit diagnostics).
+RECORD_AUDIO (voice notes), POST_NOTIFICATIONS (reminders), RECEIVE_BOOT_COMPLETED (re-arm reminders after reboot/update), INTERNET (sync, link titles, speech/translation language packs, ML Kit diagnostics).
 No exact-alarm permission is requested.
 
 ## Other Play Console items

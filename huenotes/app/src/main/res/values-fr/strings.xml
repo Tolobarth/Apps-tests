@@ -276,13 +276,7 @@
         <item quantity="other">%1$d fichiers</item>
     </plurals>
 
-    <!-- Dictation and transcription (v0.15) -->
-    <string name="add_dictate">Dicter</string>
-    <string name="cd_dictate">Dicter</string>
-    <string name="dictate_title">Écoute…</string>
-    <string name="dictate_hint">Parlez maintenant</string>
-    <string name="dictate_done">Terminé</string>
-    <string name="speech_permission">Autorisez l’accès au micro pour dicter.</string>
+    <!-- Transcription (v0.15) -->
     <string name="transcribe">Transcrire</string>
     <string name="transcribe_title">Transcription…</string>
     <string name="transcribe_stop">Arrêter</string>
@@ -293,16 +287,16 @@
     <string name="speech_err_network">La reconnaissance vocale a besoin d’une connexion pour le moment.</string>
     <string name="speech_err_busy">La reconnaissance vocale est occupée. Réessayez dans un instant.</string>
     <string name="speech_err_other">La reconnaissance vocale s’est arrêtée de façon inattendue.</string>
-    <string name="speech_unavailable">Ce téléphone ne sait pas reconnaître la parole seul. Vous pouvez autoriser la reconnaissance en ligne dans les Paramètres ; votre voix est alors envoyée au service vocal du téléphone.</string>
+    <string name="speech_unavailable">Ce téléphone ne sait pas reconnaître la parole seul. Vous pouvez autoriser la reconnaissance en ligne dans les Paramètres ; les enregistrements sont alors envoyés au service vocal du téléphone.</string>
     <string name="speech_unavailable_none">Ce téléphone n’a pas de reconnaissance vocale.</string>
     <string name="speech_open_settings">Paramètres</string>
     <string name="settings_online_speech">Reconnaissance vocale en ligne</string>
-    <string name="settings_online_speech_sum">Ce téléphone ne sait pas reconnaître la parole seul. Si activé, votre voix est envoyée au service vocal du téléphone (souvent Google) pour la dictée et les transcriptions.</string>
-    <string name="settings_online_speech_sum_ondevice">Inutile : ce téléphone reconnaît la parole seul, votre voix reste sur le téléphone.</string>
+    <string name="settings_online_speech_sum">Ce téléphone ne sait pas reconnaître la parole seul. Si activé, les enregistrements sont envoyés au service vocal du téléphone (souvent Google) pour être transcrits.</string>
+    <string name="settings_online_speech_sum_ondevice">Inutile : ce téléphone reconnaît la parole seul, vos enregistrements restent sur le téléphone.</string>
 
     <!-- Speech setup: language download on first use (v0.16) -->
     <string name="speech_setup_title">Reconnaissance vocale</string>
-    <string name="speech_setup_msg">Pour dicter et transcrire en %1$s, le service vocal du téléphone (Google) doit le télécharger une fois. Ensuite, cela fonctionne sans internet et votre voix reste sur le téléphone.</string>
+    <string name="speech_setup_msg">Pour transcrire en %1$s, le service vocal du téléphone (Google) doit le télécharger une fois. Ensuite, cela fonctionne sans internet et vos enregistrements restent sur le téléphone.</string>
     <string name="speech_not_now">Plus tard</string>
     <string name="speech_downloading_title">Téléchargement : %1$s…</string>
     <string name="speech_hide">Masquer</string>
@@ -350,7 +344,7 @@
     <string name="crash_dismiss">Ignorer</string>
 
     <!-- v0.20 -->
-    <string name="transcribe_not_accepted">Le service vocal du téléphone n’a pas accepté l’enregistrement, il n’a donc pas pu être transcrit. La dictée reste utilisable. Vous pouvez partager les détails pour aider à corriger ce problème.</string>
+    <string name="transcribe_not_accepted">Le service vocal du téléphone n’a pas accepté l’enregistrement, il n’a donc pas pu être transcrit. Vous pouvez partager les détails pour aider à corriger ce problème.</string>
     <string name="transcribe_share_details">Partager les détails</string>
 
     <!-- v0.21 -->
@@ -385,8 +379,4 @@
     <string name="type_lists">Listes</string>
     <string name="type_files">Fichiers</string>
 
-    <!-- v0.24 -->
-    <string name="dictate_no_answer">Le service vocal du téléphone n’a pas répondu, rien n’a donc pu être entendu. Réessayez ; si cela continue, redémarrez le téléphone. Vous pouvez partager les détails pour aider à corriger ce problème.</string>
-    <string name="dictate_nothing">Rien n’a été entendu. Parlez une fois « Écoute… » affiché, puis touchez Terminé. Si cela continue, vous pouvez partager les détails pour aider à corriger ce problème.</string>
-    <string name="dictate_stalled">Le micro a cessé d’envoyer du son au service vocal, même après une relance. Une autre application utilise peut-être le micro, ou le service vocal est bloqué : redémarrer le téléphone règle généralement le problème. Vous pouvez partager les détails pour aider à le corriger.</string>
 </resources>

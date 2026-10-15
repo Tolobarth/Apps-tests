@@ -69,14 +69,10 @@ class EditorActivity : GatedActivity() {
         val path = r.data?.getStringExtra("path")
         if (r.resultCode == RESULT_OK && path != null) addDrawing(File(path)) else editingDrawing = null
     }
-    private var dictation: Dictation? = null
     private var transcriber: Transcriber? = null
     private var speechDialog: androidx.appcompat.app.AlertDialog? = null
-    private var dictateAfterPermission = false
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        val dictate = dictateAfterPermission; dictateAfterPermission = false
-        if (ok) { if (dictate) startDictation() else showRecorder() }
-        else Toast.makeText(this, if (dictate) R.string.speech_permission else R.string.rec_permission, Toast.LENGTH_LONG).show()
+        if (ok) showRecorder() else Toast.makeText(this, R.string.rec_permission, Toast.LENGTH_LONG).show()
     }
 
     override fun onCreate(s: Bundle?) {
@@ -143,7 +139,6 @@ class EditorActivity : GatedActivity() {
         findViewById<View>(R.id.imageButton).setOnClickListener { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         findViewById<View>(R.id.drawButton).setOnClickListener { launchDrawing(null) }
         findViewById<View>(R.id.micButton).setOnClickListener { showRecorder() }
-        findViewById<View>(R.id.dictateButton).setOnClickListener { startDictation() }
         applyColor()
         renderMeta()
         if (start != null) window.decorView.post {
@@ -151,7 +146,6 @@ class EditorActivity : GatedActivity() {
                 "image" -> pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 "drawing" -> launchDrawing(null)
                 "audio" -> showRecorder()
-                "dictate" -> { bodyEdit.requestFocus(); startDictation() }
                 "text" -> bodyEdit.requestFocus()
             }
         }
@@ -174,7 +168,7 @@ class EditorActivity : GatedActivity() {
     override fun onPause() {
         super.onPause()
         // Android silences the mic for apps in the background: keep what was recognised so far (it is saved just below).
-        dictation?.cancel(); transcriber?.cancel(); mlkit?.cancel()
+        transcriber?.cancel(); mlkit?.cancel()
         if (deleted) return
         val n = current()
         if (n.isEmpty && attachments.isEmpty()) { if (n.id != 0L) { store.delete(n.id); Reminders.cancel(this, n.id) }; return }
@@ -301,69 +295,9 @@ class EditorActivity : GatedActivity() {
 
     // ---- speech ------------------------------------------------------------------------------
 
-    /** Where dictated words go: the field being typed in, else a new checklist row, else the end of the text. */
-    private fun dictationTarget(): EditText {
-        val f = currentFocus as? EditText
-        if (f != null && (f === titleEdit || f === bodyEdit || isInChecklist(f))) return f
-        if (!inChecklist()) return bodyEdit.also { it.requestFocus(); it.setSelection(it.text.length) }
-        val last = list.getChildAt(list.childCount - 1)?.findViewById<EditText>(R.id.text)
-        if (last != null && last.text.isBlank()) return last.also { it.requestFocus() }
-        val (items, pos) = Checklist.insertBelow(currentItems(), list.childCount - 1)
-        addRow(items[pos], pos, focus = true); applyStates(items)
-        return list.getChildAt(pos).findViewById(R.id.text)
-    }
-
-    private fun isInChecklist(v: View): Boolean {
-        var p = v.parent
-        while (p is View) { if (p === list) return true; p = p.parent }
-        return false
-    }
-
     private fun speechStatusView(initial: String) = TextView(this).apply {
         text = initial; textSize = 18f; setTextColor(getColor(R.color.on_surface)); minHeight = Palette.dp(context, 96)
         setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
-    }
-
-    private fun startDictation() {
-        if (dictation != null || transcriber != null || recorder != null) return
-        if (!Speech.canDictate(this)) { explainNoSpeech(); return }
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            dictateAfterPermission = true; micPermission.launch(Manifest.permission.RECORD_AUDIO); return
-        }
-        withSpeech { tag, online -> beginDictation(tag, online) }
-    }
-
-    private fun beginDictation(tag: String, online: Boolean) {
-        if (dictation != null || transcriber != null || recorder != null) return
-        CrashLog.doing(this, "dictate $tag" + if (online) " online" else "")
-        Player.stop()
-        val target = dictationTarget()
-        val cursor = target.selectionEnd.takeIf { it >= 0 } ?: target.text.length
-        val shown = speechStatusView(getString(R.string.dictate_hint))
-        var discard = false
-        lateinit var d: Dictation
-        d = Dictation(this, { text, hearing ->
-            shown.text = DictationText.join(listOf(text, hearing)).ifEmpty { getString(R.string.dictate_hint) }
-        }, { text, error ->
-            speechDialog?.dismiss(); speechDialog = null; dictation = null; CrashLog.doing(this, "edit")
-            if (!discard && text.isNotBlank()) {
-                val (t, at) = DictationText.insert(target.text.toString(), cursor.coerceAtMost(target.text.length), text)
-                target.setText(t); target.setSelection(at.coerceAtMost(t.length))
-            }
-            when {
-                discard -> Unit
-                // Nothing came out: say so instead of silently closing, with the details to share.
-                text.isBlank() && (error == null || error == Dictation.NO_ANSWER || error == Dictation.AUDIO_STALLED || Speech.isSilence(error)) -> dictationGotNothing(error, d.details)
-                error == Dictation.AUDIO_STALLED -> Toast.makeText(this, R.string.dictate_stalled, Toast.LENGTH_LONG).show()
-                error != null -> showSpeechError(error)
-            }
-        }, tag, { Speech.create(this, online) }, speechSetupNote)
-        dictation = d
-        speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.dictate_title).setView(shown)
-            .setPositiveButton(R.string.dictate_done) { _, _ -> d.stop() }
-            .setNegativeButton(R.string.btn_cancel) { _, _ -> discard = true; d.cancel() }
-            .setCancelable(false).show()
-        d.start()
     }
 
     /** Voice notes (and received audio files) can be turned into text on Android 13+. */
@@ -372,7 +306,7 @@ class EditorActivity : GatedActivity() {
 
     private val scope = kotlinx.coroutines.MainScope()
     private var mlkit: MlKitTranscriber? = null
-    private fun speechBusy() = dictation != null || transcriber != null || mlkit != null || recorder != null
+    private fun speechBusy() = transcriber != null || mlkit != null || recorder != null
 
     /**
      * Transcribe: Google's ML Kit first (it reads the recording itself, which works on more phones); its speech model is
@@ -386,7 +320,7 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun platformTranscript(a: Attachment, file: File, earlier: String) {
-        if (android.os.Build.VERSION.SDK_INT < 33 || !Speech.canDictate(this)) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || !Speech.canRecognise(this)) {
             if (earlier.isEmpty()) explainNoSpeech() else transcriptNotAccepted(earlier)
             return
         }
@@ -483,7 +417,7 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun beginTranscript(a: Attachment, file: File, tag: String, online: Boolean, earlier: String = "") {
-        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || mlkit != null || recorder != null) return
+        if (android.os.Build.VERSION.SDK_INT < 33 || speechBusy()) return
         CrashLog.doing(this, "transcribe $tag ${a.kind} ${file.length() / 1024}KB" + if (online) " online" else "")
         Player.stop()
         val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
@@ -504,16 +438,6 @@ class EditorActivity : GatedActivity() {
     }
 
     private var lastTranscriber: Transcriber? = null
-
-    private fun dictationGotNothing(error: Int?, details: String) {
-        val report = CrashLog.header(this) + "Dictation log\n" + details
-        MaterialAlertDialogBuilder(this)
-            .setMessage(when (error) { Dictation.NO_ANSWER -> R.string.dictate_no_answer; Dictation.AUDIO_STALLED -> R.string.dictate_stalled; else -> R.string.dictate_nothing })
-            .setPositiveButton(android.R.string.ok, null)
-            .setNeutralButton(R.string.transcribe_share_details) { _, _ ->
-                startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
-            }.show()
-    }
 
     /** The phone's speech service didn't take the recording: say so, and let the person share what happened. */
     private fun transcriptNotAccepted(details: String) {
@@ -551,8 +475,6 @@ class EditorActivity : GatedActivity() {
     }
 
     private var speechChecking = false
-    /** What the last language check said ("Ready fr-FR", "Unknown"…), for the dictation log. */
-    private var speechSetupNote = ""
 
     /**
      * Runs [then] once the phone can recognise the app's language: straight away when it can, after a download the person
@@ -565,7 +487,6 @@ class EditorActivity : GatedActivity() {
         speechChecking = true
         SpeechSetup.check(this, want) { st ->
             speechChecking = false
-            speechSetupNote = "check: $st"
             if (isFinishing || isDestroyed) return@check
             when (st) {
                 is SpeechSetup.State.Ready -> then(st.tag, false)

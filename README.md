@@ -225,3 +225,7 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - A device log showed the speech service starting ("ready"), then only 3 sound-level reports in 19 s and no speech detected: the microphone stopped delivering sound right after start. Dictation now watches the sound-level reports; if they stop for 4 s it starts over once with a fresh recogniser, and if it happens again it stops with a clear message (another app using the microphone, or the speech service stuck: restart the phone) and **Share details**.
 - Speech now always asks for a language with its region ("fr" → fr-FR, as transcription does), also when the app's or phone's language has none.
 - The dictation log records what the language check returned.
+
+### v0.26 — Dictation removed
+- Dictation (the editor's Dictate button and "+ → Dictate") is removed at the tester's request: on the TECNO KL6 the microphone stopped delivering sound to Android's speech recogniser right after it started, even after a phone restart, so it never worked reliably there. Voice typing remains available from the phone's keyboard.
+- **Transcription of voice notes stays** (ML Kit first, Android's recogniser as fallback), with its first-use language download, online-recognition setting and error logs; the wording of those settings and messages now speaks of recordings rather than your voice.

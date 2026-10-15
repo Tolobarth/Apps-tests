@@ -26,7 +26,7 @@ import java.io.File
 import kotlin.math.PI
 import kotlin.math.sin
 
-/** Dictation and transcription: text placement, audio conversion, the recogniser conversation, and the editor wiring. */
+/** Speech for transcripts: text placement, audio conversion, availability, and the recogniser conversation. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SpeechTest {
@@ -44,15 +44,15 @@ class SpeechTest {
 
     // ---- where words go ------------------------------------------------------------------------
 
-    @Test fun dictatedWordsFitIntoTheText() {
-        assertEquals("Buy milk" to 8, DictationText.insert("", 0, "buy milk"))
-        assertEquals("Call Ann. Then bake" to 19, DictationText.insert("Call Ann.", 9, "then bake"))
-        assertEquals("Eggs and flour" to 14, DictationText.insert("Eggs", 4, "and flour"))
-        assertEquals("a more b" to 6, DictationText.insert("a b", 1, "more"))
-        assertEquals("first,\nSecond" to 13, DictationText.insert("first,\n", 7, "second"))
-        assertEquals("Note: it works." to 14, DictationText.insert("Note: .", 6, "it works"))
-        assertEquals("x" to 1, DictationText.insert("x", 5, "  "))
-        assertEquals("Hello there. How are you", DictationText.join(listOf("hello there.", "how are you")))
+    @Test fun recognisedWordsFitIntoTheText() {
+        assertEquals("Buy milk" to 8, SpeechText.insert("", 0, "buy milk"))
+        assertEquals("Call Ann. Then bake" to 19, SpeechText.insert("Call Ann.", 9, "then bake"))
+        assertEquals("Eggs and flour" to 14, SpeechText.insert("Eggs", 4, "and flour"))
+        assertEquals("a more b" to 6, SpeechText.insert("a b", 1, "more"))
+        assertEquals("first,\nSecond" to 13, SpeechText.insert("first,\n", 7, "second"))
+        assertEquals("Note: it works." to 14, SpeechText.insert("Note: .", 6, "it works"))
+        assertEquals("x" to 1, SpeechText.insert("x", 5, "  "))
+        assertEquals("Hello there. How are you", SpeechText.join(listOf("hello there.", "how are you")))
     }
 
     // ---- audio conversion ----------------------------------------------------------------------
@@ -91,7 +91,7 @@ class SpeechTest {
     // ---- availability --------------------------------------------------------------------------
 
     @Test fun onDeviceRecognitionIsUsedWithoutAsking() {
-        assertTrue(Speech.canDictate(app)); assertTrue(Speech.canTranscribe(app))
+        assertTrue(Speech.canRecognise(app)); assertTrue(Speech.canTranscribe(app))
     }
 
     @Test fun onlineRecognitionOnlyWhenAllowed() {
@@ -99,9 +99,9 @@ class SpeechTest {
         shadowOf(app.packageManager).addServiceIfNotPresent(ComponentName("com.google.android.tts", "Svc"))
         shadowOf(app.packageManager).addIntentFilterForService(ComponentName("com.google.android.tts", "Svc"),
             android.content.IntentFilter("android.speech.RecognitionService"))
-        assertFalse("off by default: voice would leave the phone", Speech.canDictate(app))
+        assertFalse("off by default: voice would leave the phone", Speech.canRecognise(app))
         Prefs.setOnlineSpeech(app, true)
-        assertTrue(Speech.canDictate(app))
+        assertTrue(Speech.canRecognise(app))
     }
 
     @Test fun recognitionLanguageFollowsTheAppWithTheRightRegion() {
@@ -110,103 +110,6 @@ class SpeechTest {
         Prefs.setLanguage(app, "pt"); assertEquals("pt-BR", Speech.language(app, br))
         Prefs.setLanguage(app, "de"); assertEquals("a bare language gets its usual region", "de-DE", Speech.language(app, br))
         Prefs.setLanguage(app, ""); assertEquals("fr-FR", Speech.language(app, java.util.Locale.forLanguageTag("fr")))
-    }
-
-    // ---- dictation -----------------------------------------------------------------------------
-
-    @Test fun aRecogniserThatNeverAnswersAfterStopDoesNotHang() {
-        var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
-        d.start(); latest().triggerOnResults(results("kept")); ShadowLooper.idleMainLooper()
-        d.stop(); assertNull(ended)
-        ShadowLooper.idleMainLooper(Dictation.STOP_GRACE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertEquals("Kept" to null, ended)
-    }
-
-    @Test fun dictationKeepsListeningUntilStopped() {
-        val updates = ArrayList<Pair<String, String>>(); var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { t, h -> updates += t to h }, { t, e -> ended = t to e })
-        d.start()
-        val intent = latest().lastRecognizerIntent
-        assertTrue(intent.getBooleanExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false))
-        assertTrue(intent.getBooleanExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false))
-        assertEquals(java.util.Locale.getDefault().toLanguageTag(), intent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE))
-
-        latest().triggerOnPartialResults(results("buy"))
-        assertEquals("" to "buy", updates.last())
-        latest().triggerOnResults(results("buy milk", "by milk"))
-        ShadowLooper.idleMainLooper()
-        assertNull("still listening after the first phrase", ended)
-        latest().triggerOnResults(results("and eggs"))
-        ShadowLooper.idleMainLooper()
-        d.stop()
-        latest().triggerOnResults(results("thanks"))
-        assertEquals("Buy milk and eggs thanks" to null, ended)
-        assertTrue(latest().isDestroyed)
-    }
-
-    @Test fun silenceAfterSpeechEndsQuietlyButSilenceAloneIsReported() {
-        var ended: Pair<String, Int?>? = null
-        Dictation(app, { _, _ -> }, { t, e -> ended = t to e }).start()
-        latest().triggerOnResults(results("hello")); ShadowLooper.idleMainLooper()
-        latest().triggerOnError(SpeechRecognizer.ERROR_SPEECH_TIMEOUT)
-        assertEquals("Hello" to null, ended)
-
-        Dictation(app, { _, _ -> }, { t, e -> ended = t to e }).start()
-        latest().triggerOnError(SpeechRecognizer.ERROR_NO_MATCH)
-        assertEquals("" to SpeechRecognizer.ERROR_NO_MATCH, ended)
-        assertEquals(R.string.speech_err_nothing, Speech.errorText(SpeechRecognizer.ERROR_NO_MATCH))
-        assertEquals(R.string.speech_err_language, Speech.errorText(SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE))
-    }
-
-    @Test fun aSpeechServiceThatNeverAnswersEndsWithALog() {
-        var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
-        d.start(); latest()
-        ShadowLooper.idleMainLooper(Dictation.NO_ANSWER_MS + 100, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertEquals("" to Dictation.NO_ANSWER, ended)
-        assertTrue(d.details, d.details.contains("no answer from the speech service"))
-    }
-
-    @Test fun aMicrophoneThatGoesSilentIsRestartedOnceThenReported() {
-        var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
-        d.start()
-        val first = latest(); first.triggerOnReadyForSpeech(Bundle()); first.triggerOnRmsChanged(1f)
-        ShadowLooper.idleMainLooper(Dictation.STALL_MS + 1500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertNull(ended)
-        val second = latest()
-        assertNotSame("a fresh recogniser", first, second)
-        second.triggerOnReadyForSpeech(Bundle())
-        ShadowLooper.idleMainLooper(Dictation.STALL_MS + 1500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertEquals("" to Dictation.AUDIO_STALLED, ended)
-        assertTrue(d.details, d.details.contains("starting again") && d.details.contains("no sound again"))
-    }
-
-    @Test fun steadySoundIsNotMistakenForAStall() {
-        var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
-        d.start(); val r = latest(); r.triggerOnReadyForSpeech(Bundle())
-        repeat(20) { r.triggerOnRmsChanged(2f); ShadowLooper.idleMainLooper(500, java.util.concurrent.TimeUnit.MILLISECONDS) }
-        assertNull(ended)
-        assertFalse(d.details.contains("starting again"))
-    }
-
-    @Test fun aServiceThatAnswersIsNotCutOff() {
-        var ended: Pair<String, Int?>? = null
-        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
-        d.start(); latest().triggerOnReadyForSpeech(Bundle())
-        ShadowLooper.idleMainLooper(Dictation.NO_ANSWER_MS + 100, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertNull(ended)
-        assertTrue(d.details, d.details.contains("ready"))
-    }
-
-    @Test fun cancelKeepsWhatWasRecognisedAndEndsOnce() {
-        val ends = ArrayList<String>()
-        val d = Dictation(app, { _, _ -> }, { t, _ -> ends += t })
-        d.start(); latest().triggerOnResults(results("one")); ShadowLooper.idleMainLooper()
-        d.cancel(); d.cancel(); d.stop()
-        assertEquals(listOf("One"), ends)
     }
 
     // ---- transcription -------------------------------------------------------------------------
@@ -314,65 +217,5 @@ class SpeechTest {
         ended = null
         transcriber(null).start(); settle()
         assertEquals("" to SpeechRecognizer.ERROR_AUDIO, ended)
-    }
-
-    // ---- editor --------------------------------------------------------------------------------
-
-    /** The phone's speech service answers the first-use check: the app's language is installed. */
-    private fun speechInstalled() = latest().triggerSupportResult(android.speech.RecognitionSupport.Builder()
-        .setInstalledOnDeviceLanguages(listOf(Speech.language(app))).build())
-
-    @Test fun editorDictatesIntoTheTextAtTheCursor() {
-        app.deleteDatabase("huenotes.db"); Lock.clear(app)
-        shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
-        val id = NoteStore(app).save(Note(title = "Shopping", body = "Bread."))
-        val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
-        val body = c.get().findViewById<EditText>(R.id.bodyEdit)
-        body.requestFocus(); body.setSelection(body.text.length)
-        c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
-        speechInstalled()
-        latest().triggerOnResults(results("milk and eggs")); ShadowLooper.idleMainLooper()
-        (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-        latest().triggerOnResults(results("")); ShadowLooper.idleMainLooper()
-        assertEquals("Bread. Milk and eggs", body.text.toString())
-        c.pause()
-        assertEquals("Bread. Milk and eggs", NoteStore(app).get(id)!!.body)
-    }
-
-    @Test fun editorSaysSoWhenNothingWasHeard() {
-        app.deleteDatabase("huenotes.db"); Lock.clear(app)
-        shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
-        val id = NoteStore(app).save(Note(title = "T", body = "Keep"))
-        val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
-        c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
-        speechInstalled()
-        latest().triggerOnReadyForSpeech(Bundle())
-        (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).performClick()   // Done
-        latest().triggerOnError(SpeechRecognizer.ERROR_NO_MATCH); ShadowLooper.idleMainLooper()
-        val d = ShadowDialog.getLatestDialog() as AlertDialog
-        assertEquals(app.getString(R.string.dictate_nothing), d.findViewById<android.widget.TextView>(android.R.id.message)!!.text.toString())
-        assertEquals("Keep", c.get().findViewById<EditText>(R.id.bodyEdit).text.toString())
-    }
-
-    @Test fun editorCancelThrowsAwayTheDictation() {
-        app.deleteDatabase("huenotes.db"); Lock.clear(app)
-        shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
-        val id = NoteStore(app).save(Note(title = "T", body = "Keep"))
-        val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
-        c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
-        speechInstalled()
-        latest().triggerOnResults(results("oops")); ShadowLooper.idleMainLooper()
-        (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
-        ShadowLooper.idleMainLooper()
-        assertEquals("Keep", c.get().findViewById<EditText>(R.id.bodyEdit).text.toString())
-    }
-
-    @Test fun withoutRecognitionTheEditorExplainsInsteadOfListening() {
-        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(false)
-        app.deleteDatabase("huenotes.db"); Lock.clear(app)
-        val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java)).setup()
-        c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
-        assertNull(ShadowSpeechRecognizer.getLatestSpeechRecognizer())
-        assertTrue(ShadowDialog.getLatestDialog().isShowing)
     }
 }

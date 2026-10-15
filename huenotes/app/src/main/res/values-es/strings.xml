@@ -276,13 +276,7 @@
         <item quantity="other">%1$d archivos</item>
     </plurals>
 
-    <!-- Dictation and transcription (v0.15) -->
-    <string name="add_dictate">Dictar</string>
-    <string name="cd_dictate">Dictar</string>
-    <string name="dictate_title">Escuchando…</string>
-    <string name="dictate_hint">Habla ahora</string>
-    <string name="dictate_done">Listo</string>
-    <string name="speech_permission">Permite el acceso al micrófono para dictar.</string>
+    <!-- Transcription (v0.15) -->
     <string name="transcribe">Transcribir</string>
     <string name="transcribe_title">Transcribiendo…</string>
     <string name="transcribe_stop">Detener</string>
@@ -293,16 +287,16 @@
     <string name="speech_err_network">El reconocimiento de voz necesita conexión ahora mismo.</string>
     <string name="speech_err_busy">El reconocimiento de voz está ocupado. Inténtalo en un momento.</string>
     <string name="speech_err_other">El reconocimiento de voz se detuvo inesperadamente.</string>
-    <string name="speech_unavailable">Este teléfono no puede reconocer la voz por sí solo. Puedes permitir el reconocimiento en línea en Ajustes; tu voz se envía entonces al servicio de voz del teléfono.</string>
+    <string name="speech_unavailable">Este teléfono no puede reconocer la voz por sí solo. Puedes permitir el reconocimiento en línea en Ajustes; las grabaciones se envían entonces al servicio de voz del teléfono.</string>
     <string name="speech_unavailable_none">Este teléfono no tiene reconocimiento de voz.</string>
     <string name="speech_open_settings">Ajustes</string>
     <string name="settings_online_speech">Reconocimiento de voz en línea</string>
-    <string name="settings_online_speech_sum">Este teléfono no puede reconocer la voz por sí solo. Si está activado, tu voz se envía al servicio de voz del teléfono (normalmente Google) para dictados y transcripciones.</string>
-    <string name="settings_online_speech_sum_ondevice">No hace falta: este teléfono reconoce la voz por sí solo, así que tu voz no sale del teléfono.</string>
+    <string name="settings_online_speech_sum">Este teléfono no puede reconocer la voz por sí solo. Si está activado, las grabaciones se envían al servicio de voz del teléfono (normalmente Google) para transcribirlas.</string>
+    <string name="settings_online_speech_sum_ondevice">No hace falta: este teléfono reconoce la voz por sí solo, así que tus grabaciones no salen del teléfono.</string>
 
     <!-- Speech setup: language download on first use (v0.16) -->
     <string name="speech_setup_title">Reconocimiento de voz</string>
-    <string name="speech_setup_msg">Para dictar y transcribir en %1$s, el servicio de voz del teléfono (Google) tiene que descargarlo una vez. Después funciona sin internet y tu voz no sale del teléfono.</string>
+    <string name="speech_setup_msg">Para transcribir en %1$s, el servicio de voz del teléfono (Google) tiene que descargarlo una vez. Después funciona sin internet y tus grabaciones no salen del teléfono.</string>
     <string name="speech_not_now">Ahora no</string>
     <string name="speech_downloading_title">Descargando %1$s…</string>
     <string name="speech_hide">Ocultar</string>
@@ -350,7 +344,7 @@
     <string name="crash_dismiss">Descartar</string>
 
     <!-- v0.20 -->
-    <string name="transcribe_not_accepted">El servicio de voz del teléfono no aceptó la grabación, así que no se pudo transcribir. El dictado sigue funcionando. Puedes compartir los detalles para ayudar a corregirlo.</string>
+    <string name="transcribe_not_accepted">El servicio de voz del teléfono no aceptó la grabación, así que no se pudo transcribir. Puedes compartir los detalles para ayudar a corregirlo.</string>
     <string name="transcribe_share_details">Compartir detalles</string>
 
     <!-- v0.21 -->
@@ -385,8 +379,4 @@
     <string name="type_lists">Listas</string>
     <string name="type_files">Archivos</string>
 
-    <!-- v0.24 -->
-    <string name="dictate_no_answer">El servicio de voz del teléfono no respondió, así que no se pudo oír nada. Inténtalo de nuevo; si sigue pasando, reinicia el teléfono. Puedes compartir los detalles para ayudar a corregirlo.</string>
-    <string name="dictate_nothing">No se oyó nada. Habla cuando aparezca «Escuchando…» y luego toca Listo. Si sigue pasando, puedes compartir los detalles para ayudar a corregirlo.</string>
-    <string name="dictate_stalled">El micrófono dejó de enviar sonido al servicio de voz, incluso tras volver a empezar. Puede que otra app esté usando el micrófono o que el servicio de voz esté bloqueado: reiniciar el teléfono suele arreglarlo. Puedes compartir los detalles para ayudar a corregirlo.</string>
 </resources>

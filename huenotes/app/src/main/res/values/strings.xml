@@ -276,13 +276,7 @@
         <item quantity="other">%1$d files</item>
     </plurals>
 
-    <!-- Dictation and transcription (v0.15) -->
-    <string name="add_dictate">Dictate</string>
-    <string name="cd_dictate">Dictate</string>
-    <string name="dictate_title">Listening…</string>
-    <string name="dictate_hint">Speak now</string>
-    <string name="dictate_done">Done</string>
-    <string name="speech_permission">Allow microphone access to dictate.</string>
+    <!-- Transcription (v0.15) -->
     <string name="transcribe">Transcribe</string>
     <string name="transcribe_title">Transcribing…</string>
     <string name="transcribe_stop">Stop</string>
@@ -293,16 +287,16 @@
     <string name="speech_err_network">Speech recognition needs a connection right now.</string>
     <string name="speech_err_busy">Speech recognition is busy. Try again in a moment.</string>
     <string name="speech_err_other">Speech recognition stopped unexpectedly.</string>
-    <string name="speech_unavailable">This phone can’t recognise speech by itself. You can allow online speech recognition in Settings; your voice is then sent to the phone’s speech service.</string>
+    <string name="speech_unavailable">This phone can’t recognise speech by itself. You can allow online speech recognition in Settings; recordings are then sent to the phone’s speech service.</string>
     <string name="speech_unavailable_none">This phone has no speech recognition.</string>
     <string name="speech_open_settings">Settings</string>
     <string name="settings_online_speech">Online speech recognition</string>
-    <string name="settings_online_speech_sum">This phone can’t recognise speech by itself. When on, your voice is sent to the phone’s speech service (usually Google) for dictation and transcripts.</string>
-    <string name="settings_online_speech_sum_ondevice">Not needed: this phone recognises speech by itself, so your voice stays on the phone.</string>
+    <string name="settings_online_speech_sum">This phone can’t recognise speech by itself. When on, recordings are sent to the phone’s speech service (usually Google) to be transcribed.</string>
+    <string name="settings_online_speech_sum_ondevice">Not needed: this phone recognises speech by itself, so your recordings stay on the phone.</string>
 
     <!-- Speech setup: language download on first use (v0.16) -->
     <string name="speech_setup_title">Speech recognition</string>
-    <string name="speech_setup_msg">To dictate and transcribe in %1$s, the phone’s speech service (Google) needs to download it once. After that it works without internet and your voice stays on the phone.</string>
+    <string name="speech_setup_msg">To transcribe in %1$s, the phone’s speech service (Google) needs to download it once. After that it works without internet and your recordings stay on the phone.</string>
     <string name="speech_not_now">Not now</string>
     <string name="speech_downloading_title">Downloading %1$s…</string>
     <string name="speech_hide">Hide</string>
@@ -350,7 +344,7 @@
     <string name="crash_dismiss">Dismiss</string>
 
     <!-- v0.20 -->
-    <string name="transcribe_not_accepted">The phone’s speech service didn’t accept the recording, so it couldn’t be transcribed. Dictation can still be used. You can share the details to help fix this.</string>
+    <string name="transcribe_not_accepted">The phone’s speech service didn’t accept the recording, so it couldn’t be transcribed. You can share the details to help fix this.</string>
     <string name="transcribe_share_details">Share details</string>
 
     <!-- v0.21 -->
@@ -385,8 +379,4 @@
     <string name="type_lists">Lists</string>
     <string name="type_files">Files</string>
 
-    <!-- v0.24 -->
-    <string name="dictate_no_answer">The phone’s speech service didn’t respond, so nothing could be heard. Try again; if it keeps happening, restart the phone. You can share the details to help fix this.</string>
-    <string name="dictate_nothing">Nothing was heard. Speak after “Listening…” appears, then tap Done. If it keeps happening, you can share the details to help fix it.</string>
-    <string name="dictate_stalled">The microphone stopped sending sound to the speech service, even after starting again. Another app may be using the microphone, or the speech service is stuck: restarting the phone usually fixes it. You can share the details to help fix this.</string>
 </resources>

@@ -36,7 +36,7 @@ class SpeechSetupTest {
         shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
         ShadowSpeechRecognizer.reset(); ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(true)
     }
-    @After fun tearDown() = ShadowSpeechRecognizer.reset()
+    @After fun tearDown() { ShadowSpeechRecognizer.reset(); MlKitSpeech.factory = { error("not in tests") } }
 
     // ---- choosing the language -----------------------------------------------------------------
 
@@ -75,23 +75,35 @@ class SpeechSetupTest {
         assertEquals(State.Unknown, got)
     }
 
-    // ---- the editor's first use ----------------------------------------------------------------
+    // ---- the editor's first use (transcribing with Android's recogniser) ------------------------------
 
-    private fun editor() = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java)).setup()
+    /** A note with a voice note, ML Kit out of the way so Android's recogniser path is used. */
+    private fun editor(): org.robolectric.android.controller.ActivityController<EditorActivity> {
+        MlKitSpeech.factory = { throw IllegalStateException("ML Kit not in this test") }
+        val s = NoteStore(app); val id = s.save(Note(title = "V")); val uid = s.get(id)!!.uid
+        s.addAttachment(Attachment(noteUid = uid, kind = AttachmentKind.AUDIO, durationMs = 1000).also { s.storage.file(it).writeBytes(byteArrayOf(1)) })
+        return Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
+    }
+    private fun transcribe(c: org.robolectric.android.controller.ActivityController<EditorActivity>) {
+        c.get().findViewById<View>(R.id.transcribe).performClick(); ShadowLooper.idleMainLooper()
+    }
     private fun dialog() = ShadowDialog.getLatestDialog() as AlertDialog
-    private fun message(d: AlertDialog) = shadowOf(d).run { (d.findViewById<android.widget.TextView>(android.R.id.message))?.text.toString() }
-
-    @Test fun anInstalledVariantIsUsedForListening() {
-        Prefs.setLanguage(app, "fr")
-        val c = editor()
-        c.get().findViewById<View>(R.id.dictateButton).performClick()
-        latest().triggerSupportResult(support(installed = listOf("fr-CA")))
-        assertEquals("fr-CA", latest().lastRecognizerIntent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE))
+    private fun message(d: AlertDialog) = d.findViewById<android.widget.TextView>(android.R.id.message)?.text.toString()
+    /** The transcription itself ran (it then stops at once: the test recording isn't real audio). */
+    private fun transcriptionRan(): Boolean {
+        repeat(5) { Thread.sleep(60); ShadowLooper.idleMainLooper() }
+        return org.robolectric.shadows.ShadowToast.showedToast(app.getString(Speech.errorText(SpeechRecognizer.ERROR_AUDIO)))
     }
 
-    @Test fun aMissingLanguageIsOfferedForDownloadBeforeListening() {
-        val c = editor()
-        c.get().findViewById<View>(R.id.dictateButton).performClick()
+    @Test fun anInstalledLanguageGoesStraightToTranscribing() {
+        Prefs.setLanguage(app, "fr")
+        val c = editor(); transcribe(c)
+        latest().triggerSupportResult(support(installed = listOf("fr-CA")))
+        assertTrue(transcriptionRan())
+    }
+
+    @Test fun aMissingLanguageIsOfferedForDownloadBeforeTranscribing() {
+        val c = editor(); transcribe(c)
         val checker = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
         latest().triggerSupportResult(support(supported = listOf(Speech.language(app)))); ShadowLooper.idleMainLooper()
         assertSame("nothing listens yet", checker, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
@@ -103,8 +115,7 @@ class SpeechSetupTest {
     }
 
     @Test @Config(sdk = [33]) fun onAndroid13TheDownloadIsRequestedAndThePersonToldToComeBack() {
-        val c = editor()
-        c.get().findViewById<View>(R.id.dictateButton).performClick()
+        val c = editor(); transcribe(c)
         latest().triggerSupportResult(support(supported = listOf(Speech.language(app)))); ShadowLooper.idleMainLooper()
         dialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); ShadowLooper.idleMainLooper()
         assertEquals(Speech.language(app), latest().latestModelDownloadIntent!!.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE))
@@ -117,15 +128,14 @@ class SpeechSetupTest {
         shadowOf(app.packageManager).addServiceIfNotPresent(android.content.ComponentName("com.google.android.tts", "Svc"))
         shadowOf(app.packageManager).addIntentFilterForService(android.content.ComponentName("com.google.android.tts", "Svc"),
             android.content.IntentFilter("android.speech.RecognitionService"))
-        val c = editor()
-        c.get().findViewById<View>(R.id.dictateButton).performClick()
+        val c = editor(); transcribe(c)
         val checker = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
         latest().triggerSupportResult(support(installed = listOf("xx-XX"))); ShadowLooper.idleMainLooper()
         assertFalse(Prefs.onlineSpeech(app))
         assertSame(checker, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
         dialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); ShadowLooper.idleMainLooper()
         assertTrue(Prefs.onlineSpeech(app))
-        assertNotSame("now listening with the online recogniser", checker, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+        assertTrue(transcriptionRan())
         assertEquals("com.google.android.tts", SpeechSetup.servicePackage(app))
     }
 }
