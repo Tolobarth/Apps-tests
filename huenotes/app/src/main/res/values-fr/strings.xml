@@ -379,4 +379,8 @@
     <string name="type_lists">Listes</string>
     <string name="type_files">Fichiers</string>
 
+    <!-- v0.27 -->
+    <string name="transcribe_unavailable">Ce téléphone ne sait pas encore transcrire les enregistrements seul. Mettre à jour l’application « Reconnaissance vocale et synthèse vocale » de Google règle généralement le problème.</string>
+    <string name="transcribe_unavailable_online">Ce téléphone ne sait pas encore transcrire les enregistrements seul. Mettre à jour l’application « Reconnaissance vocale et synthèse vocale » de Google règle généralement le problème. Vous pouvez aussi utiliser la reconnaissance en ligne : l’enregistrement est alors envoyé au service vocal du téléphone (souvent Google).</string>
+    <string name="transcribe_update_app">Mettre à jour l’app vocale</string>
 </resources>

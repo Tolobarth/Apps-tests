@@ -379,4 +379,8 @@
     <string name="type_lists">Listas</string>
     <string name="type_files">Arquivos</string>
 
+    <!-- v0.27 -->
+    <string name="transcribe_unavailable">Este celular ainda não transcreve gravações sozinho. Atualizar o app “Serviços de fala do Google” costuma resolver.</string>
+    <string name="transcribe_unavailable_online">Este celular ainda não transcreve gravações sozinho. Atualizar o app “Serviços de fala do Google” costuma resolver. Ou use o reconhecimento on-line: a gravação é então enviada ao serviço de voz do celular (geralmente o Google).</string>
+    <string name="transcribe_update_app">Atualizar app de voz</string>
 </resources>

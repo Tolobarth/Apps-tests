@@ -379,4 +379,8 @@
     <string name="type_lists">Lists</string>
     <string name="type_files">Files</string>
 
+    <!-- v0.27 -->
+    <string name="transcribe_unavailable">This phone can’t transcribe recordings by itself yet. Updating Google’s “Speech Recognition &amp; Synthesis” app usually fixes this.</string>
+    <string name="transcribe_unavailable_online">This phone can’t transcribe recordings by itself yet. Updating Google’s “Speech Recognition &amp; Synthesis” app usually fixes this. Or use online recognition: the recording is then sent to the phone’s speech service (usually Google).</string>
+    <string name="transcribe_update_app">Update speech app</string>
 </resources>

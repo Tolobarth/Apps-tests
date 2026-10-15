@@ -379,4 +379,8 @@
     <string name="type_lists">Listas</string>
     <string name="type_files">Archivos</string>
 
+    <!-- v0.27 -->
+    <string name="transcribe_unavailable">Este teléfono aún no puede transcribir grabaciones por sí solo. Actualizar la app «Servicios de voz de Google» suele arreglarlo.</string>
+    <string name="transcribe_unavailable_online">Este teléfono aún no puede transcribir grabaciones por sí solo. Actualizar la app «Servicios de voz de Google» suele arreglarlo. O usa el reconocimiento en línea: la grabación se envía entonces al servicio de voz del teléfono (normalmente Google).</string>
+    <string name="transcribe_update_app">Actualizar app de voz</string>
 </resources>

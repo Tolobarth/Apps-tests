@@ -379,4 +379,8 @@
     <string name="type_lists">Listen</string>
     <string name="type_files">Dateien</string>
 
+    <!-- v0.27 -->
+    <string name="transcribe_unavailable">Dieses Telefon kann Aufnahmen noch nicht selbst transkribieren. Ein Update der Google-App „Spracherkennung und -synthese“ behebt das meist.</string>
+    <string name="transcribe_unavailable_online">Dieses Telefon kann Aufnahmen noch nicht selbst transkribieren. Ein Update der Google-App „Spracherkennung und -synthese“ behebt das meist. Oder nutze Online-Erkennung: Die Aufnahme wird dann an den Sprachdienst des Telefons (meist Google) gesendet.</string>
+    <string name="transcribe_update_app">Sprach-App aktualisieren</string>
 </resources>

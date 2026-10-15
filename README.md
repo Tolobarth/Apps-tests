@@ -229,3 +229,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 ### v0.26 — Dictation removed
 - Dictation (the editor's Dictate button and "+ → Dictate") is removed at the tester's request: on the TECNO KL6 the microphone stopped delivering sound to Android's speech recogniser right after it started, even after a phone restart, so it never worked reliably there. Voice typing remains available from the phone's keyboard.
 - **Transcription of voice notes stays** (ML Kit first, Android's recogniser as fallback), with its first-use language download, online-recognition setting and error logs; the wording of those settings and messages now speaks of recordings rather than your voice.
+
+### v0.27 — Transcription on phones without a usable recogniser
+- A tester's log (Infinix X6525, Android 13) showed ML Kit reporting French as unavailable, and the phone has no on-device Android recogniser; HueNotes then showed "the speech service didn't accept the recording", which was wrong (nothing had been sent) and left no way forward.
+- Now it says the phone can't transcribe by itself yet and offers **Update speech app** (opens Google's "Speech Recognition & Synthesis" in the Play Store: an outdated preinstalled version is the usual cause). If the phone has an online recogniser, it also offers **Use online**, which turns on online recognition only after the person agrees; otherwise **Share details**.
+- The log now records why ML Kit was unavailable, which recognisers the phone has, and the speech app's version.

@@ -320,11 +320,40 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun platformTranscript(a: Attachment, file: File, earlier: String) {
-        if (android.os.Build.VERSION.SDK_INT < 33 || !Speech.canRecognise(this)) {
-            if (earlier.isEmpty()) explainNoSpeech() else transcriptNotAccepted(earlier)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && Speech.canRecognise(this)) {
+            withSpeech { tag, online -> beginTranscript(a, file, tag, online, earlier) }
             return
         }
-        withSpeech { tag, online -> beginTranscript(a, file, tag, online, earlier) }
+        // Neither ML Kit nor an on-device recogniser: say what can be done instead of a generic failure.
+        val online = android.os.Build.VERSION.SDK_INT >= 33 && android.speech.SpeechRecognizer.isRecognitionAvailable(this)
+        val log = earlier + "platform: ${if (android.os.Build.VERSION.SDK_INT < 33) "needs Android 13" else "no on-device recogniser"}" +
+            (if (online) ", online recogniser available" else ", no online recogniser") + "\n" + "speech app: ${speechAppVersion() ?: "not installed"}\n"
+        val b = MaterialAlertDialogBuilder(this)
+            .setMessage(if (online) R.string.transcribe_unavailable_online else R.string.transcribe_unavailable)
+            .setNegativeButton(R.string.btn_cancel, null)
+        if (online) b.setPositiveButton(R.string.speech_use_online) { _, _ ->
+            Prefs.setOnlineSpeech(this, true)
+            withSpeech { tag, on -> beginTranscript(a, file, tag, on, log) }
+        } else b.setPositiveButton(R.string.transcribe_share_details) { _, _ -> shareTranscriptLog(log) }
+        b.setNeutralButton(R.string.transcribe_update_app) { _, _ -> openSpeechAppInStore() }
+        b.show()
+    }
+
+    private fun speechAppVersion(): String? =
+        runCatching { packageManager.getPackageInfo("com.google.android.tts", 0).versionName }.getOrNull()
+
+    /** Google's "Speech Recognition & Synthesis" in the Play Store: an outdated one is the usual reason ML Kit can't transcribe. */
+    private fun openSpeechAppInStore() {
+        val id = "com.google.android.tts"
+        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$id"))) }
+        catch (e: android.content.ActivityNotFoundException) {
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$id"))) }
+        }
+    }
+
+    private fun shareTranscriptLog(details: String) {
+        val report = CrashLog.header(this) + "Transcription log\n" + details
+        startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
     }
 
     private fun transcribeWithMlKit(a: Attachment, file: File) {
@@ -332,13 +361,14 @@ class EditorActivity : GatedActivity() {
         CrashLog.doing(this, "transcribe-mlkit-status ${locale.toLanguageTag()}")
         val engine = try { MlKitSpeech.factory(locale) } catch (e: Exception) { platformTranscript(a, file, "ml-kit: ${e.javaClass.simpleName}\n"); return }
         scope.launch {
-            val st = try { engine.status() } catch (e: Exception) { MlKitSpeech.Status.UNAVAILABLE }
+            var why = ""
+            val st = try { engine.status() } catch (e: Exception) { why = " (${e.javaClass.simpleName}: ${e.message})"; MlKitSpeech.Status.UNAVAILABLE }
             if (isFinishing || isDestroyed) { engine.close(); return@launch }
             when (st) {
                 MlKitSpeech.Status.AVAILABLE -> beginMlKit(a, file, engine)
                 MlKitSpeech.Status.DOWNLOADABLE -> offerSpeechModel(a, file, engine, locale)
                 MlKitSpeech.Status.DOWNLOADING -> downloadSpeechModel(a, file, engine, locale)
-                MlKitSpeech.Status.UNAVAILABLE -> { engine.close(); platformTranscript(a, file, "ml-kit: unavailable for ${locale.toLanguageTag()}\n") }
+                MlKitSpeech.Status.UNAVAILABLE -> { engine.close(); platformTranscript(a, file, "ml-kit: unavailable for ${locale.toLanguageTag()}$why\n") }
             }
         }
     }

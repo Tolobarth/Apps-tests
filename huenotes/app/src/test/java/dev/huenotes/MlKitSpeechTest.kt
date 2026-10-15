@@ -150,13 +150,33 @@ class MlKitSpeechTest {
         assertTrue("transcription ran", org.robolectric.shadows.ShadowToast.showedToast(app.getString(Speech.errorText(android.speech.SpeechRecognizer.ERROR_AUDIO))))
     }
 
-    @Test fun whenNeitherWayIsAvailableThePersonIsToldAndCanShareTheLog() {
+    private fun message(d: AlertDialog) = d.findViewById<android.widget.TextView>(android.R.id.message)!!.text.toString()
+
+    @Test fun withoutAnyRecogniserThePersonIsToldToUpdateGooglesSpeechApp() {
         withGoogleSpeechApp(); fake.status = MlKitSpeech.Status.UNAVAILABLE
         ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(false)
         val (c, _) = noteWithVoice()
         c.get().findViewById<View>(R.id.transcribe).performClick(); settle()
         val d = dialog()
-        assertEquals(app.getString(R.string.transcribe_not_accepted), d.findViewById<android.widget.TextView>(android.R.id.message)!!.text.toString())
-        assertEquals(View.VISIBLE, d.getButton(AlertDialog.BUTTON_NEUTRAL).visibility)
+        assertEquals(app.getString(R.string.transcribe_unavailable), message(d))
+        assertEquals(app.getString(R.string.transcribe_share_details), d.getButton(AlertDialog.BUTTON_POSITIVE).text.toString())
+        d.getButton(AlertDialog.BUTTON_NEUTRAL).performClick(); ShadowLooper.idleMainLooper()
+        val store = shadowOf(c.get()).nextStartedActivity
+        assertEquals("market://details?id=com.google.android.tts", store.dataString)
+    }
+
+    @Test fun whenOnlyOnlineRecognitionExistsItIsOfferedWithConsent() {
+        withGoogleSpeechApp(); fake.status = MlKitSpeech.Status.UNAVAILABLE
+        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(false)
+        shadowOf(app.packageManager).addServiceIfNotPresent(android.content.ComponentName("com.google.android.tts", "Svc"))
+        shadowOf(app.packageManager).addIntentFilterForService(android.content.ComponentName("com.google.android.tts", "Svc"),
+            android.content.IntentFilter("android.speech.RecognitionService"))
+        val (c, _) = noteWithVoice()
+        c.get().findViewById<View>(R.id.transcribe).performClick(); settle()
+        assertEquals(app.getString(R.string.transcribe_unavailable_online), message(dialog()))
+        assertFalse("nothing sent before agreeing", Prefs.onlineSpeech(app))
+        dialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); settle()
+        assertTrue(Prefs.onlineSpeech(app))
+        assertTrue("transcription ran", org.robolectric.shadows.ShadowToast.showedToast(app.getString(Speech.errorText(android.speech.SpeechRecognizer.ERROR_AUDIO))))
     }
 }
