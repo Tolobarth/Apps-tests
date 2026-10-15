@@ -21,6 +21,11 @@ so your voice stays on the phone; the language is downloaded once by that servic
 Only if offline recognition can't handle your language **and** you agree (or switch on Settings → Notes → Online speech recognition)
 is your voice sent to the speech service to be recognised there, under that provider's privacy policy.
 
+Transcripts of recordings use Google's **ML Kit speech recognition** where available: it passes the recording to Google's
+speech app on your phone, which recognises it on the device; its speech model is downloaded from Google once, after you agree.
+Like other ML Kit features it may send Google diagnostic information (device and app information, performance and error data), not
+the recording.
+
 ## Translation
 Notes are translated **on your phone** with Google's ML Kit. Your note text is not sent anywhere. Each language pack (about 30 MB) is
 downloaded from Google the first time you need it, and can be deleted in Settings → Notes → Translation languages. As Google documents

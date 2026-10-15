@@ -352,4 +352,8 @@
     <!-- v0.20 -->
     <string name="transcribe_not_accepted">Der Sprachdienst des Telefons hat die Aufnahme nicht angenommen, daher konnte sie nicht transkribiert werden. Diktieren funktioniert weiterhin. Du kannst die Details teilen, damit das behoben werden kann.</string>
     <string name="transcribe_share_details">Details teilen</string>
+
+    <!-- v0.21 -->
+    <string name="transcribe_model_msg">Zum Transkribieren von Aufnahmen muss Googles Sprachmodell für %1$s einmal heruntergeladen werden. Danach läuft die Transkription auf dem Telefon und deine Aufnahmen bleiben dort.</string>
+    <string name="transcribe_model_failed">Googles Sprachmodell für %1$s konnte nicht heruntergeladen werden. Prüfe die Verbindung und versuche es noch einmal.</string>
 </resources>

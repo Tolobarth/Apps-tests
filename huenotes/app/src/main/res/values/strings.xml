@@ -352,4 +352,8 @@
     <!-- v0.20 -->
     <string name="transcribe_not_accepted">The phone’s speech service didn’t accept the recording, so it couldn’t be transcribed. Dictation can still be used. You can share the details to help fix this.</string>
     <string name="transcribe_share_details">Share details</string>
+
+    <!-- v0.21 -->
+    <string name="transcribe_model_msg">To transcribe recordings, Google’s speech model for %1$s needs to be downloaded once. After that transcription runs on the phone and your recordings stay on it.</string>
+    <string name="transcribe_model_failed">Google’s speech model for %1$s couldn’t be downloaded. Check the connection and try again.</string>
 </resources>

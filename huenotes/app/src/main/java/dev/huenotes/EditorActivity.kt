@@ -35,6 +35,8 @@ import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class EditorActivity : GatedActivity() {
     private lateinit var store: NoteStore
@@ -166,7 +168,7 @@ class EditorActivity : GatedActivity() {
     override fun onPause() {
         super.onPause()
         // Android silences the mic for apps in the background: keep what was recognised so far (it is saved just below).
-        dictation?.cancel(); transcriber?.cancel()
+        dictation?.cancel(); transcriber?.cancel(); mlkit?.cancel()
         if (deleted) return
         val n = current()
         if (n.isEmpty && attachments.isEmpty()) { if (n.id != 0L) { store.delete(n.id); Reminders.cancel(this, n.id) }; return }
@@ -179,7 +181,7 @@ class EditorActivity : GatedActivity() {
         stopRecording(save = true)   // Android silences the mic for backgrounded apps, so keep what we have
     }
 
-    override fun onDestroy() { super.onDestroy(); stopRecording(save = false) }
+    override fun onDestroy() { super.onDestroy(); stopRecording(save = false); scope.cancel() }
 
     // ---- version history ---------------------------------------------------------------------
 
@@ -355,15 +357,120 @@ class EditorActivity : GatedActivity() {
     private fun canTranscribe(a: Attachment) =
         (a.kind == AttachmentKind.AUDIO || (a.kind == AttachmentKind.FILE && a.mimeType.startsWith("audio/"))) && Speech.canTranscribe(this)
 
+    private val scope = kotlinx.coroutines.MainScope()
+    private var mlkit: MlKitTranscriber? = null
+    private fun speechBusy() = dictation != null || transcriber != null || mlkit != null || recorder != null
+
+    /**
+     * Transcribe: Google's ML Kit first (it reads the recording itself, which works on more phones); its speech model is
+     * downloaded once, after asking. Android's recogniser is the fallback when ML Kit isn't there or fails before any text.
+     */
     private fun transcribe(a: Attachment) {
-        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
+        if (speechBusy()) return
         val file = store.storage.file(a)
         if (!file.exists()) { Toast.makeText(this, R.string.file_not_here, Toast.LENGTH_SHORT).show(); return }
-        withSpeech { tag, online -> beginTranscript(a, file, tag, online) }
+        if (MlKitSpeech.mayWork(this)) transcribeWithMlKit(a, file) else platformTranscript(a, file, "")
     }
 
-    private fun beginTranscript(a: Attachment, file: File, tag: String, online: Boolean) {
-        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
+    private fun platformTranscript(a: Attachment, file: File, earlier: String) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || !Speech.canDictate(this)) {
+            if (earlier.isEmpty()) explainNoSpeech() else transcriptNotAccepted(earlier)
+            return
+        }
+        withSpeech { tag, online -> beginTranscript(a, file, tag, online, earlier) }
+    }
+
+    private fun transcribeWithMlKit(a: Attachment, file: File) {
+        val locale = MlKitSpeech.locale(Speech.language(this))
+        CrashLog.doing(this, "transcribe-mlkit-status ${locale.toLanguageTag()}")
+        val engine = try { MlKitSpeech.factory(locale) } catch (e: Exception) { platformTranscript(a, file, "ml-kit: ${e.javaClass.simpleName}\n"); return }
+        scope.launch {
+            val st = try { engine.status() } catch (e: Exception) { MlKitSpeech.Status.UNAVAILABLE }
+            if (isFinishing || isDestroyed) { engine.close(); return@launch }
+            when (st) {
+                MlKitSpeech.Status.AVAILABLE -> beginMlKit(a, file, engine)
+                MlKitSpeech.Status.DOWNLOADABLE -> offerSpeechModel(a, file, engine, locale)
+                MlKitSpeech.Status.DOWNLOADING -> downloadSpeechModel(a, file, engine, locale)
+                MlKitSpeech.Status.UNAVAILABLE -> { engine.close(); platformTranscript(a, file, "ml-kit: unavailable for ${locale.toLanguageTag()}\n") }
+            }
+        }
+    }
+
+    /** First use: "Transcription needs Google's speech model for français" → Download / Not now. */
+    private fun offerSpeechModel(a: Attachment, file: File, engine: MlKitSpeech.Engine, locale: java.util.Locale) {
+        MaterialAlertDialogBuilder(this).setTitle(R.string.speech_setup_title)
+            .setMessage(getString(R.string.transcribe_model_msg, SpeechSetup.displayName(locale.toLanguageTag())))
+            .setPositiveButton(R.string.speech_download) { _, _ -> downloadSpeechModel(a, file, engine, locale) }
+            .setNegativeButton(R.string.speech_not_now) { _, _ -> engine.close() }
+            .setOnCancelListener { engine.close() }.show()
+    }
+
+    private fun downloadSpeechModel(a: Attachment, file: File, engine: MlKitSpeech.Engine, locale: java.util.Locale) {
+        val name = SpeechSetup.displayName(locale.toLanguageTag())
+        val bar = com.google.android.material.progressindicator.LinearProgressIndicator(this).apply {
+            isIndeterminate = true
+            setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
+        }
+        val wait = MaterialAlertDialogBuilder(this).setTitle(getString(R.string.speech_downloading_title, name)).setView(bar)
+            .setNegativeButton(R.string.speech_hide, null).show()
+        CrashLog.doing(this, "transcribe-mlkit-download ${locale.toLanguageTag()}")
+        scope.launch {
+            var total = 0L
+            var outcome: MlKitSpeech.Download? = null
+            try {
+                engine.download().collect { d ->
+                    when (d) {
+                        is MlKitSpeech.Download.Started -> total = d.totalBytes
+                        is MlKitSpeech.Download.Progress -> if (total > 0) { bar.isIndeterminate = false; bar.setProgressCompat((d.bytes * 100 / total).toInt().coerceIn(0, 100), true) }
+                        else -> outcome = d
+                    }
+                }
+            } catch (e: Exception) { outcome = MlKitSpeech.Download.Failed(e.message ?: e.javaClass.simpleName) }
+            val waiting = wait.isShowing
+            wait.dismiss()
+            if (isFinishing || isDestroyed) { engine.close(); return@launch }
+            val failed = outcome as? MlKitSpeech.Download.Failed
+            when {
+                failed != null -> {
+                    engine.close()
+                    MaterialAlertDialogBuilder(this@EditorActivity).setMessage(getString(R.string.transcribe_model_failed, name) + "\n\n(" + failed.why + ")")
+                        .setPositiveButton(R.string.translate_retry) { _, _ -> transcribeWithMlKit(a, file) }
+                        .setNegativeButton(R.string.btn_cancel, null).show()
+                }
+                waiting -> { Toast.makeText(this@EditorActivity, getString(R.string.speech_ready, name), Toast.LENGTH_SHORT).show(); beginMlKit(a, file, engine) }
+                else -> { engine.close(); Toast.makeText(this@EditorActivity, getString(R.string.speech_ready, name), Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    private fun beginMlKit(a: Attachment, file: File, engine: MlKitSpeech.Engine) {
+        if (speechBusy()) { engine.close(); return }
+        CrashLog.doing(this, "transcribe-mlkit ${a.kind} ${file.length() / 1024}KB")
+        Player.stop()
+        val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
+        val shown = speechStatusView(AttachmentFiles.duration(0) + total)
+        lateinit var t: MlKitTranscriber
+        t = MlKitTranscriber(file, engine, { text, ms ->
+            shown.text = AttachmentFiles.duration(ms) + total + if (text.isEmpty()) "" else "\n\n" + text
+        }, { text, error ->
+            speechDialog?.dismiss(); speechDialog = null; mlkit = null; CrashLog.doing(this, "edit")
+            if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
+            when (error) {
+                null -> Unit
+                MlKitTranscriber.ENGINE_FAILED -> platformTranscript(a, file, t.details + "\n")
+                Transcriber.NOT_ACCEPTED -> platformTranscript(a, file, t.details + "\n")
+                else -> showSpeechError(error)
+            }
+        }, scope = scope)
+        mlkit = t
+        speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.transcribe_title).setView(shown)
+            .setNegativeButton(R.string.transcribe_stop) { _, _ -> t.cancel() }
+            .setCancelable(false).show()
+        t.start()
+    }
+
+    private fun beginTranscript(a: Attachment, file: File, tag: String, online: Boolean, earlier: String = "") {
+        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || mlkit != null || recorder != null) return
         CrashLog.doing(this, "transcribe $tag ${a.kind} ${file.length() / 1024}KB" + if (online) " online" else "")
         Player.stop()
         val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
@@ -373,7 +480,7 @@ class EditorActivity : GatedActivity() {
         }, { text, error ->
             speechDialog?.dismiss(); speechDialog = null; transcriber = null; CrashLog.doing(this, "edit")
             if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
-            if (error == Transcriber.NOT_ACCEPTED) lastTranscriber?.let { transcriptNotAccepted(it) }
+            if (error == Transcriber.NOT_ACCEPTED) lastTranscriber?.let { transcriptNotAccepted(earlier + it.details) }
             else if (error != null) showSpeechError(error)
         }, tag, { Speech.create(this, online) })
         transcriber = t; lastTranscriber = t
@@ -386,8 +493,8 @@ class EditorActivity : GatedActivity() {
     private var lastTranscriber: Transcriber? = null
 
     /** The phone's speech service didn't take the recording: say so, and let the person share what happened. */
-    private fun transcriptNotAccepted(t: Transcriber) {
-        val report = CrashLog.header(this) + "Transcription log\n" + t.details
+    private fun transcriptNotAccepted(details: String) {
+        val report = CrashLog.header(this) + "Transcription log\n" + details
         MaterialAlertDialogBuilder(this).setMessage(R.string.transcribe_not_accepted)
             .setPositiveButton(android.R.string.ok, null)
             .setNeutralButton(R.string.transcribe_share_details) { _, _ ->

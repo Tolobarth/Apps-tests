@@ -20,6 +20,10 @@ disclosure). Likely categories: **App info and performance → Diagnostics / Oth
 uses Translate. Check each item against the current form and Google's page:
 https://developers.google.com/ml-kit/android-data-disclosure
 
+## ML Kit speech recognition (v0.21)
+`com.google.mlkit:genai-speech-recognition` (alpha) transcribes recordings via Google's speech app on the device. Check Google's ML
+Kit data disclosure page for its entry (it was not listed when this was written) and declare it like the translation SDK.
+
 ## Speech
 Dictation uses the phone's speech service; on-device by default, so no audio leaves the phone through HueNotes. With "Online speech
 recognition" allowed, audio goes to the phone's speech service (a system app, normally Google's), not to the developer; check whether

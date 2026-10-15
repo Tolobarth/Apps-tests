@@ -33,7 +33,7 @@ object Speech {
     fun online(c: Context) = Prefs.onlineSpeech(c) && SpeechRecognizer.isRecognitionAvailable(c)
     fun canDictate(c: Context) = onDevice(c) || online(c)
     /** Feeding a recording to the recogniser needs Android 13. */
-    fun canTranscribe(c: Context) = Build.VERSION.SDK_INT >= 33 && canDictate(c)
+    fun canTranscribe(c: Context) = (Build.VERSION.SDK_INT >= 33 && canDictate(c)) || MlKitSpeech.mayWork(c)
 
     /** [online] picks the phone's regular recogniser (only when the person allowed it); otherwise on-device when available. */
     fun create(c: Context, online: Boolean = false): SpeechRecognizer =
@@ -195,6 +195,35 @@ object Pcm {
         }
     }
 
+    const val BYTES_PER_SEC = RATE * 2
+    private const val CHUNK = BYTES_PER_SEC / 10
+    private const val LEAD_MS = 500L
+
+    /**
+     * Writes [pcm] from [from] into [w] like a microphone would: 100 ms chunks, never more than half a second ahead of real
+     * time ([speed] 1). Closes [w] at the end. Blocking: run on a worker thread.
+     */
+    fun feedRealTime(pcm: ByteArray, from: Int, w: ParcelFileDescriptor, speed: Double, stop: () -> Boolean, wrote: (Int) -> Unit) {
+        val begin = SystemClock.elapsedRealtime()
+        try {
+            ParcelFileDescriptor.AutoCloseOutputStream(w).use { out ->
+                var pos = from
+                while (!stop() && pos < pcm.size) {
+                    val n = minOf(CHUNK, pcm.size - pos)
+                    out.write(pcm, pos, n); pos += n
+                    wrote(pos)
+                    val ahead = ((pos - from) * 1000.0 / BYTES_PER_SEC / speed).toLong() - (SystemClock.elapsedRealtime() - begin)
+                    if (ahead > LEAD_MS) Thread.sleep(ahead - LEAD_MS)
+                }
+            }
+        } catch (e: Exception) { runCatching { w.close() } }
+    }
+
+    /** Decodes a whole recording to 16 kHz mono PCM bytes (even length), or null if it can't be read. */
+    fun decodeAll(file: File, decode: (File, OutputStream, () -> Boolean, (Long) -> Unit) -> Long, cancelled: () -> Boolean): ByteArray? = try {
+        java.io.ByteArrayOutputStream().also { decode(file, it, cancelled) { } }.toByteArray().let { if (it.size % 2 == 0) it else it.copyOf(it.size - 1) }
+    } catch (e: Exception) { null }
+
     fun toBytes(s: ShortArray): ByteArray = ByteBuffer.allocate(s.size * 2).order(ByteOrder.LITTLE_ENDIAN).apply { asShortBuffer().put(s) }.array()
 
     /**
@@ -350,21 +379,8 @@ class Transcriber(
             Thread({ feed(w) }, "transcribe-feed").start()
         }
 
-        /** Writes the audio in 100 ms chunks, never more than [LEAD_MS] ahead of real time. */
         private fun feed(w: ParcelFileDescriptor) {
-            val begin = SystemClock.elapsedRealtime()
-            try {
-                ParcelFileDescriptor.AutoCloseOutputStream(w).use { out ->
-                    var pos = from
-                    while (!stop && pos < pcm.size) {
-                        val n = minOf(CHUNK, pcm.size - pos)
-                        out.write(pcm, pos, n); pos += n
-                        fed = pos; lastWrite = SystemClock.elapsedRealtime()
-                        val ahead = ((pos - from) * 1000.0 / BYTES_PER_SEC / speed).toLong() - (SystemClock.elapsedRealtime() - begin)
-                        if (ahead > LEAD_MS) Thread.sleep(ahead - LEAD_MS)
-                    }
-                }
-            } catch (e: Exception) { runCatching { w.close() } }
+            Pcm.feedRealTime(pcm, from, w, speed, { stop }) { pos -> fed = pos; lastWrite = SystemClock.elapsedRealtime() }
             if (!stop) main.post { if (live()) { feedDone = true; feedDoneAt = SystemClock.elapsedRealtime(); note("all audio handed over") } }
         }
 
@@ -400,13 +416,12 @@ class Transcriber(
     fun start() {
         note("file ${file.length() / 1024} KB, $language")
         Thread({
-            val bytes = try {
-                java.io.ByteArrayOutputStream().also { decode(file, it, { cancelled }) { } }.toByteArray()
-            } catch (e: Exception) { note("decode failed: ${e.javaClass.simpleName}"); null }
+            val bytes = Pcm.decodeAll(file, decode) { cancelled }
+            if (bytes == null) note("decode failed")
             main.post {
                 if (ended) return@post
                 if (bytes == null || bytes.size < BYTES_PER_SEC / 10) { finish(SpeechRecognizer.ERROR_AUDIO); return@post }
-                pcm = if (bytes.size % 2 == 0) bytes else bytes.copyOf(bytes.size - 1)
+                pcm = bytes
                 note("decoded %.1fs of audio".format(pcm.size / BYTES_PER_SEC.toDouble()))
                 open(0, Mode.SEGMENTED)
                 main.post(watchdog)
@@ -456,9 +471,7 @@ class Transcriber(
     companion object {
         /** The speech service took no audio or never answered, in either mode. */
         const val NOT_ACCEPTED = -1
-        const val BYTES_PER_SEC = Pcm.RATE * 2
-        private const val CHUNK = BYTES_PER_SEC / 10
-        private const val LEAD_MS = 500L
+        const val BYTES_PER_SEC = Pcm.BYTES_PER_SEC
         private const val REWIND_BYTES = BYTES_PER_SEC / 2
         const val FEED_STALL_MS = 6_000L
         const val NO_ANSWER_MS = 8_000L

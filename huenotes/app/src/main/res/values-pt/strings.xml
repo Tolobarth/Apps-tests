@@ -352,4 +352,8 @@
     <!-- v0.20 -->
     <string name="transcribe_not_accepted">O serviço de voz do celular não aceitou a gravação, então ela não pôde ser transcrita. O ditado continua funcionando. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
     <string name="transcribe_share_details">Compartilhar detalhes</string>
+
+    <!-- v0.21 -->
+    <string name="transcribe_model_msg">Para transcrever gravações, o modelo de voz do Google para %1$s precisa ser baixado uma vez. Depois a transcrição acontece no celular e suas gravações ficam nele.</string>
+    <string name="transcribe_model_failed">Não foi possível baixar o modelo de voz do Google para %1$s. Verifique a conexão e tente de novo.</string>
 </resources>

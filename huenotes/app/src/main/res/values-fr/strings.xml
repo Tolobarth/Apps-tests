@@ -352,4 +352,8 @@
     <!-- v0.20 -->
     <string name="transcribe_not_accepted">Le service vocal du téléphone n’a pas accepté l’enregistrement, il n’a donc pas pu être transcrit. La dictée reste utilisable. Vous pouvez partager les détails pour aider à corriger ce problème.</string>
     <string name="transcribe_share_details">Partager les détails</string>
+
+    <!-- v0.21 -->
+    <string name="transcribe_model_msg">Pour transcrire les enregistrements, le modèle vocal Google pour le %1$s doit être téléchargé une fois. Ensuite, la transcription se fait sur le téléphone et vos enregistrements y restent.</string>
+    <string name="transcribe_model_failed">Le modèle vocal Google pour le %1$s n’a pas pu être téléchargé. Vérifiez la connexion et réessayez.</string>
 </resources>

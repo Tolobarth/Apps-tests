@@ -196,3 +196,9 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - The recording is now decoded first, then fed to the recogniser **at real-time speed** (as Google's engine expects for recordings), so a 9-second note takes about 9 seconds and the progress follows it.
 - Two ways of listening: the long **segmented** session first; if the service stops reading the audio (6 s) or never answers (8 s), HueNotes switches to the classic **phrase-by-phrase** session (the one dictation uses), restarting after each phrase from where the audio had got to (rewound 0.5 s so no word is cut). If neither works, it stops with a clear message and **Share details**: a log of modes, recogniser events and timings, without transcript text.
 - Fixed: stopping one session could make the recogniser report an error that was taken for the next session's.
+
+### v0.21 — Transcription through ML Kit
+- A device log (TECNO KL6, Android 14) showed Google's speech service never reads recordings handed over through Android's `EXTRA_AUDIO_SOURCE`, in either mode: it only listens to the microphone. So **Transcribe now uses Google's ML Kit speech recognition** (`genai-speech-recognition`, basic mode, alpha), which reads the recording itself (fed at real-time speed through a pipe) and talks to Google's speech app directly.
+- First use: if ML Kit's speech model for the language isn't on the phone, HueNotes asks, then downloads it with progress (Google's servers), then transcribes. Android's recogniser (v0.20 path) remains the fallback when ML Kit isn't available or fails before producing text; if both fail, the shared log contains both attempts.
+- Shown on Android 12+ when Google's speech app is installed. **Minimum Android is now 8.0** (ML Kit speech requires it; this also removes the old Android 7 reminder-channel lint error).
+- Not yet confirmed on a device: ML Kit speech on the TECNO (it is alpha, and French is a beta language in basic mode).

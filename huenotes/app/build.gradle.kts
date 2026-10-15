@@ -21,10 +21,10 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "dev.huenotes"
-        minSdk = 24
+        minSdk = 26          // Android 8+: ML Kit speech needs it
         targetSdk = 36
-        versionCode = 20
-        versionName = "0.20"
+        versionCode = 21
+        versionName = "0.21"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
@@ -43,6 +43,8 @@ dependencies {
     implementation("androidx.work:work-runtime:2.10.0")
     implementation("com.google.mlkit:translate:17.0.3")       // on-device translation; language packs downloaded on first use
     implementation("com.google.mlkit:language-id:17.0.6")     // detects a note's language (model bundled, ~1 MB)
+    implementation("com.google.mlkit:genai-speech-recognition:1.0.0-alpha1")  // transcribes recordings via Google's speech app
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.test:core:1.5.0")
