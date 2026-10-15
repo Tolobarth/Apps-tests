@@ -190,3 +190,9 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - On Android 11+, the next start also reports a **freeze (ANR)** or **native crash** (which the in-app crash handler can't catch), read from Android's own exit record: the main thread's stack for freezes, the readable parts of the tombstone for native crashes. Each report is offered once, and only shared if the person chooses to.
 - HueNotes labels what it is doing (dictate, transcribe with language and file size, translate with the language pair) in Android's exit record and in crash reports, so a report says which action failed. No note content is included.
 - Audio decoding for transcripts gives up after 3 s without output once the whole file was read (some decoders never flag the end), instead of waiting forever.
+
+### v0.20 — Transcription that doesn't hang
+- On a real phone (Transsion, Android 14) transcription stopped at 0:01: the speech service never read the audio handed to it, so HueNotes waited forever.
+- The recording is now decoded first, then fed to the recogniser **at real-time speed** (as Google's engine expects for recordings), so a 9-second note takes about 9 seconds and the progress follows it.
+- Two ways of listening: the long **segmented** session first; if the service stops reading the audio (6 s) or never answers (8 s), HueNotes switches to the classic **phrase-by-phrase** session (the one dictation uses), restarting after each phrase from where the audio had got to (rewound 0.5 s so no word is cut). If neither works, it stops with a clear message and **Share details**: a log of modes, recogniser events and timings, without transcript text.
+- Fixed: stopping one session could make the recogniser report an error that was taken for the next session's.

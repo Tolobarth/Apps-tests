@@ -348,4 +348,8 @@
     <string name="crash_msg">HueNotes wurde beim letzten Mal wegen eines Fehlers beendet. Du kannst den Fehlerbericht teilen, damit er behoben werden kann. Er enthält nur technische Angaben (App-Version, Telefonmodell, der Fehler), keine Notizen, und wird nur gesendet, wenn du ihn teilst.</string>
     <string name="crash_share">Bericht teilen</string>
     <string name="crash_dismiss">Schließen</string>
+
+    <!-- v0.20 -->
+    <string name="transcribe_not_accepted">Der Sprachdienst des Telefons hat die Aufnahme nicht angenommen, daher konnte sie nicht transkribiert werden. Diktieren funktioniert weiterhin. Du kannst die Details teilen, damit das behoben werden kann.</string>
+    <string name="transcribe_share_details">Details teilen</string>
 </resources>

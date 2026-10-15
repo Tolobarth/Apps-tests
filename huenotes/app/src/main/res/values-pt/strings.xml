@@ -348,4 +348,8 @@
     <string name="crash_msg">Desculpe, o HueNotes parou da última vez por causa de um bug. Você pode compartilhar o relatório de erro para ajudar a corrigir. Ele tem só detalhes técnicos (versão do app, modelo do celular, o erro), nenhuma nota, e só é enviado se você compartilhar.</string>
     <string name="crash_share">Compartilhar relatório</string>
     <string name="crash_dismiss">Dispensar</string>
+
+    <!-- v0.20 -->
+    <string name="transcribe_not_accepted">O serviço de voz do celular não aceitou a gravação, então ela não pôde ser transcrita. O ditado continua funcionando. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
+    <string name="transcribe_share_details">Compartilhar detalhes</string>
 </resources>

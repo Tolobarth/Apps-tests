@@ -168,54 +168,6 @@ class SpeechTest {
 
     // ---- transcription -------------------------------------------------------------------------
 
-    @Test fun transcriptSegmentsAreJoined() {
-        var ended: Pair<String, Int?>? = null; val seen = ArrayList<String>()
-        val t = Transcriber(app, File("unused.m4a"), { text, _ -> seen += text }, { text, e -> ended = text to e })
-        t.listener.onSegmentResults(results("first part."))
-        t.listener.onSegmentResults(results(""))
-        t.listener.onSegmentResults(results("second part"))
-        assertEquals(listOf("First part.", "First part.", "First part. Second part"), seen)
-        t.listener.onEndOfSegmentedSession()
-        t.listener.onError(SpeechRecognizer.ERROR_CLIENT)          // late callbacks are ignored
-        assertEquals("First part. Second part" to null, ended)
-    }
-
-    @Test fun theAudioPipeStaysOpenUntilTheSessionEnds() {
-        // Android passes the request to the speech service a moment after startListening(): closing the pipe earlier
-        // crashed the app (v0.15–0.17).
-        val gate = java.util.concurrent.CountDownLatch(1)
-        var ended: Pair<String, Int?>? = null
-        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e },
-            decode = { _, out, _, _ -> out.write(ByteArray(3200)); gate.await(5, java.util.concurrent.TimeUnit.SECONDS); 100L })
-        t.start()
-        val pfd = latest().lastRecognizerIntent.getParcelableExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, android.os.ParcelFileDescriptor::class.java)!!
-        assertTrue(pfd.fileDescriptor.valid())
-        t.listener.onSegmentResults(results("hello there"))
-        assertTrue("still open while transcribing", pfd.fileDescriptor.valid())
-        t.listener.onEndOfSegmentedSession()
-        gate.countDown()
-        assertEquals("Hello there" to null, ended)
-        assertThrows(IllegalStateException::class.java) { pfd.fd }
-    }
-
-    @Test fun aServiceThatNeverFinishesIsStoppedAfterTheRecordingIsHandedOver() {
-        var ended: Pair<String, Int?>? = null
-        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e }, decode = { _, _, _, _ -> 0L })
-        t.start()
-        t.listener.onSegmentResults(results("partial"))
-        Thread.sleep(200); ShadowLooper.idleMainLooper()
-        assertNull(ended)
-        ShadowLooper.idleMainLooper(Transcriber.END_GRACE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
-        assertEquals("Partial" to null, ended)
-    }
-
-    @Test fun anUnreadableRecordingEndsWithAnError() {
-        var ended: Pair<String, Int?>? = null
-        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e }, decode = { _, _, _, _ -> throw java.io.IOException("bad") })
-        t.start(); Thread.sleep(200); ShadowLooper.idleMainLooper()
-        assertEquals("" to SpeechRecognizer.ERROR_AUDIO, ended)
-    }
-
     @Test fun freezesAreReportedOnceWithTheMainThreadAndWhatWasGoingOn() {
         CrashLog.clear(app); app.getSharedPreferences("crash", 0).edit().clear().commit()
         val am = app.getSystemService(android.app.ActivityManager::class.java)
@@ -240,6 +192,85 @@ class SpeechTest {
         assertTrue(r.startsWith("HueNotes ")); assertTrue(r.contains("IllegalStateException: boom"))
         java.io.File(app.filesDir, "last-crash.txt").writeText(r)
         assertEquals(r, CrashLog.pending(app)); CrashLog.clear(app); assertNull(CrashLog.pending(app))
+    }
+
+    // ---- transcription -------------------------------------------------------------------------
+
+    private fun pcm(seconds: Double) = ByteArray((seconds * Transcriber.BYTES_PER_SEC).toInt() / 2 * 2)
+    private var ended: Pair<String, Int?>? = null
+    private fun transcriber(audio: ByteArray?, speed: Double = 1e6) = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e },
+        language = "fr-FR", newRecognizer = { SpeechRecognizer.createOnDeviceSpeechRecognizer(app) },
+        decode = { _, out, _, _ -> if (audio == null) throw java.io.IOException("bad"); out.write(audio); 0L }, speed = speed)
+
+    /** Lets the worker threads run, then the main looper (optionally moving the clock on). */
+    private fun settle(advanceMs: Long = 0) {
+        Thread.sleep(150); ShadowLooper.idleMainLooper()
+        if (advanceMs > 0) ShadowLooper.idleMainLooper(advanceMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        Thread.sleep(50); ShadowLooper.idleMainLooper()
+    }
+    private fun lastIntent() = latest().lastRecognizerIntent
+
+    @Test fun aRecordingIsTranscribedInOneSegmentedSession() {
+        ended = null
+        val t = transcriber(pcm(1.0)); t.start(); settle()
+        assertEquals(Transcriber.Mode.SEGMENTED, t.mode)
+        assertEquals(RecognizerIntent.EXTRA_AUDIO_SOURCE, lastIntent().getStringExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION))
+        assertEquals("fr-FR", lastIntent().getStringExtra(RecognizerIntent.EXTRA_LANGUAGE))
+        t.listener!!.onSegmentResults(results("bonjour à tous."))
+        t.listener!!.onSegmentResults(results("à demain"))
+        t.listener!!.onEndOfSegmentedSession()
+        assertEquals("Bonjour à tous. À demain" to null, ended)
+    }
+
+    @Test fun theAudioPipeStaysOpenUntilTheJobEnds() {
+        // Android passes the request to the speech service a moment after startListening(): closing the pipe earlier
+        // crashed the app (v0.15-0.17).
+        ended = null
+        val t = transcriber(pcm(1.0)); t.start(); settle()
+        val pfd = lastIntent().getParcelableExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, android.os.ParcelFileDescriptor::class.java)!!
+        assertTrue(pfd.fileDescriptor.valid())
+        t.cancel()
+        assertThrows(IllegalStateException::class.java) { pfd.fd }
+    }
+
+    @Test fun whenTheServiceDoesNotTakeTheAudioItFallsBackToPhrasesFromTheStart() {
+        ended = null
+        val t = transcriber(pcm(30.0), speed = 1.0); t.start(); settle()    // real-time feeding: still going during the test
+        settle(Transcriber.NO_ANSWER_MS + 1000)
+        assertEquals(Transcriber.Mode.PHRASES, t.mode)
+        assertNull("the phrase mode is the classic one", lastIntent().getStringExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION))
+        t.listener!!.onResults(results("première phrase"))       // → a new session continues from where the audio was
+        settle()
+        assertNull("more audio to come: a new phrase session", ended)
+        assertEquals(t.details, 2, Regex("start phrases").findAll(t.details).count())
+        t.cancel()
+        assertEquals("Première phrase" to null, ended)
+        assertTrue(t.details, Regex("no answer from the service|service stopped reading").containsMatchIn(t.details) && t.details.contains("start phrases at 0.0s"))
+        assertFalse("no transcript text in the log", t.details.contains("première"))
+    }
+
+    @Test fun ifNeitherWayWorksItEndsWithAShareableLog() {
+        ended = null
+        val t = transcriber(pcm(5.0)); t.start(); settle()
+        settle(Transcriber.NO_ANSWER_MS + 1000)        // segmented: no answer → phrases
+        settle(Transcriber.NO_ANSWER_MS + 1000)        // phrases: no answer either
+        assertEquals("" to Transcriber.NOT_ACCEPTED, ended)
+        assertEquals(2, Regex("service stopped reading|no answer").findAll(t.details).count())
+    }
+
+    @Test fun aSilentServiceAfterTheLastAudioStillEndsWithWhatItHas() {
+        ended = null
+        val t = transcriber(pcm(1.0)); t.start(); settle()
+        latest().triggerOnReadyForSpeech(Bundle())
+        t.listener!!.onSegmentResults(results("tout"))
+        settle(Transcriber.END_GRACE_MS + 1000)
+        assertEquals("Tout" to null, ended)
+    }
+
+    @Test fun anUnreadableRecordingEndsWithAnAudioError() {
+        ended = null
+        transcriber(null).start(); settle()
+        assertEquals("" to SpeechRecognizer.ERROR_AUDIO, ended)
     }
 
     // ---- editor --------------------------------------------------------------------------------

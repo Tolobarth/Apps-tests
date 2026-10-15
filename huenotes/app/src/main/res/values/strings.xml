@@ -348,4 +348,8 @@
     <string name="crash_msg">Sorry, HueNotes stopped last time because of a bug. You can share the error report to help fix it. It has technical details only (app version, phone model, the error), no notes, and is sent only if you share it.</string>
     <string name="crash_share">Share report</string>
     <string name="crash_dismiss">Dismiss</string>
+
+    <!-- v0.20 -->
+    <string name="transcribe_not_accepted">The phone’s speech service didn’t accept the recording, so it couldn’t be transcribed. Dictation can still be used. You can share the details to help fix this.</string>
+    <string name="transcribe_share_details">Share details</string>
 </resources>

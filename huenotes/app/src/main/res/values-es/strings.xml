@@ -348,4 +348,8 @@
     <string name="crash_msg">Lo sentimos, HueNotes se detuvo la última vez por un error. Puedes compartir el informe para ayudar a corregirlo. Solo tiene datos técnicos (versión de la app, modelo del teléfono, el error), ninguna nota, y solo se envía si lo compartes.</string>
     <string name="crash_share">Compartir informe</string>
     <string name="crash_dismiss">Descartar</string>
+
+    <!-- v0.20 -->
+    <string name="transcribe_not_accepted">El servicio de voz del teléfono no aceptó la grabación, así que no se pudo transcribir. El dictado sigue funcionando. Puedes compartir los detalles para ayudar a corregirlo.</string>
+    <string name="transcribe_share_details">Compartir detalles</string>
 </resources>

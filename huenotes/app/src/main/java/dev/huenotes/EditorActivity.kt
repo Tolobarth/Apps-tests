@@ -373,13 +373,26 @@ class EditorActivity : GatedActivity() {
         }, { text, error ->
             speechDialog?.dismiss(); speechDialog = null; transcriber = null; CrashLog.doing(this, "edit")
             if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
-            if (error != null) showSpeechError(error)
-        }, tag, Speech.create(this, online))
-        transcriber = t
+            if (error == Transcriber.NOT_ACCEPTED) lastTranscriber?.let { transcriptNotAccepted(it) }
+            else if (error != null) showSpeechError(error)
+        }, tag, { Speech.create(this, online) })
+        transcriber = t; lastTranscriber = t
         speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.transcribe_title).setView(shown)
             .setNegativeButton(R.string.transcribe_stop) { _, _ -> t.cancel() }
             .setCancelable(false).show()
         t.start()
+    }
+
+    private var lastTranscriber: Transcriber? = null
+
+    /** The phone's speech service didn't take the recording: say so, and let the person share what happened. */
+    private fun transcriptNotAccepted(t: Transcriber) {
+        val report = CrashLog.header(this) + "Transcription log\n" + t.details
+        MaterialAlertDialogBuilder(this).setMessage(R.string.transcribe_not_accepted)
+            .setPositiveButton(android.R.string.ok, null)
+            .setNeutralButton(R.string.transcribe_share_details) { _, _ ->
+                startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
+            }.show()
     }
 
     /** A transcript goes at the end of the note: a new paragraph, or a new checklist row. */

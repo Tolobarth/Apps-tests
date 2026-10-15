@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -250,8 +251,13 @@ object Pcm {
 }
 
 /**
- * Transcribes a voice note (Android 13+): the recording is decoded on a worker thread and streamed to the recogniser through
- * a pipe as one long, segmented session. [onUpdate] gets the text so far and the position reached in ms; [onEnd] the result.
+ * Transcribes a voice note (Android 13+). The recording is decoded to 16 kHz mono PCM, then fed to the recogniser through a
+ * pipe **at real-time speed**, like a microphone (Google's engine expects that). Two ways of listening are tried:
+ *  - [Mode.SEGMENTED]: one long session that reports a piece of text at each pause (Android 13's way for recordings);
+ *  - [Mode.PHRASES]: the classic one-phrase session, restarted after each phrase from where the audio had got to.
+ * If the speech service stops reading the audio, or never answers, it falls back from the first to the second, and if that
+ * fails too it ends with [NOT_ACCEPTED] and a log of what happened ([details]) that can be shared.
+ * [onUpdate] gets the text so far and the position reached in ms; [onEnd] the result.
  */
 class Transcriber(
     private val c: Context,
@@ -259,75 +265,203 @@ class Transcriber(
     private val onUpdate: (text: String, positionMs: Long) -> Unit,
     private val onEnd: (text: String, error: Int?) -> Unit,
     private val language: String = Speech.language(c),
-    private val recognizer: SpeechRecognizer = Speech.create(c),
+    private val newRecognizer: () -> SpeechRecognizer = { Speech.create(c) },
     /** Writes the recording as 16 kHz mono PCM; tests replace it. */
     private val decode: (File, OutputStream, () -> Boolean, (Long) -> Unit) -> Long = Pcm::decode,
+    /** How fast the audio is fed: 1 = real time; tests go faster. Waiting limits don't change with it. */
+    private val speed: Double = 1.0,
 ) {
+    enum class Mode { SEGMENTED, PHRASES }
+
     private val parts = ArrayList<String>()
     @Volatile private var cancelled = false
     private var ended = false
     private val main = Handler(Looper.getMainLooper())
-    @Volatile private var position = 0L
-    /** Our end of the pipe the recogniser reads. Kept open for the whole session: Android hands the request to the speech
-     *  service a moment after startListening(), and a closed descriptor at that point crashes the app. */
-    private var source: ParcelFileDescriptor? = null
+    private var pcm = ByteArray(0)
+    private val log = ArrayList<String>()
+    private val t0 = SystemClock.elapsedRealtime()
     val text get() = DictationText.join(parts)
+    /** What happened, for a shared report: modes, recogniser events, timings. No transcript text. */
+    val details get() = synchronized(log) { log.joinToString("\n") }
+    var mode = Mode.SEGMENTED; private set
 
-    internal val listener = object : RecognitionListener {
-        override fun onSegmentResults(b: Bundle) { Speech.best(b).takeIf { it.isNotEmpty() }?.let { parts += it }; onUpdate(text, position) }
-        override fun onEndOfSegmentedSession() = finish(null)
-        override fun onResults(b: Bundle?) { Speech.best(b).takeIf { it.isNotEmpty() }?.let { parts += it }; finish(null) }
-        override fun onError(error: Int) = finish(if (Speech.isSilence(error) && parts.isNotEmpty()) null else error)
-        override fun onPartialResults(b: Bundle?) = Unit
-        override fun onReadyForSpeech(p: Bundle?) = Unit
-        override fun onBeginningOfSpeech() = Unit
-        override fun onRmsChanged(v: Float) = Unit
-        override fun onBufferReceived(b: ByteArray?) = Unit
-        override fun onEndOfSpeech() = Unit
-        override fun onEvent(t: Int, p: Bundle?) = Unit
-    }
+    private fun note(s: String) = synchronized(log) { if (log.size < 300) log += "+%.1fs %s".format((SystemClock.elapsedRealtime() - t0) / 1000.0, s) }
 
-    @RequiresApi(33)
-    fun start() {
-        val (read, write) = try { ParcelFileDescriptor.createPipe().let { it[0] to it[1] } } catch (e: IOException) { finish(SpeechRecognizer.ERROR_CLIENT); return }
-        source = read
-        try {
-            recognizer.setRecognitionListener(listener)
-            recognizer.startListening(Speech.intent(c, language)
-                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, read)
+    // ---- one listening session -----------------------------------------------------------------
+
+    private inner class Session(val from: Int, val mode: Mode) {
+        val rec: SpeechRecognizer = newRecognizer()
+        lateinit var read: ParcelFileDescriptor     // kept open until the session ends: Android hands it over later
+        @Volatile var fed = from
+        @Volatile var lastWrite = SystemClock.elapsedRealtime()
+        @Volatile var stop = false
+        /** True once this session is being replaced or ended: whatever it still reports is ignored. */
+        fun live() = !stop && session === this
+        var feedDone = false; var feedDoneAt = 0L
+        var events = 0
+        val startedAt = SystemClock.elapsedRealtime()
+
+        val listener = object : RecognitionListener {
+            private fun ev(name: String) { if (live()) { events++; if (events <= 40 || name != "rms") note(name) } }
+            override fun onReadyForSpeech(p: Bundle?) = ev("ready")
+            override fun onBeginningOfSpeech() = ev("speech")
+            override fun onRmsChanged(v: Float) = ev("rms")
+            override fun onBufferReceived(b: ByteArray?) = ev("buffer")
+            override fun onEndOfSpeech() = ev("end-of-speech")
+            override fun onPartialResults(b: Bundle?) = ev("partial")
+            override fun onEvent(t: Int, p: Bundle?) = ev("event $t")
+            override fun onSegmentResults(b: Bundle) {
+                ev("segment ${Speech.best(b).length} chars")
+                if (live()) { add(b); onUpdate(text, position()) }
+            }
+            override fun onEndOfSegmentedSession() { ev("end-of-session"); if (live()) finish(null) }
+            override fun onResults(b: Bundle?) {
+                ev("results ${Speech.best(b).length} chars")
+                if (!live()) return
+                add(b)
+                if (this@Session.mode == Mode.SEGMENTED || atEnd()) finish(null) else next()
+            }
+            override fun onError(error: Int) {
+                ev("error $error")
+                if (!live()) return
+                when {
+                    this@Session.mode == Mode.PHRASES && Speech.isSilence(error) && !atEnd() -> next()     // a quiet stretch
+                    Speech.isSilence(error) && parts.isNotEmpty() -> finish(null)
+                    else -> finish(error)
+                }
+            }
+        }
+
+        fun atEnd() = feedDone || fed >= pcm.size
+
+        fun start() {
+            val (r, w) = ParcelFileDescriptor.createPipe().let { it[0] to it[1] }
+            read = r
+            note("start ${mode.name.lowercase()} at %.1fs".format(from / BYTES_PER_SEC.toDouble()))
+            rec.setRecognitionListener(listener)
+            val i = Speech.intent(c, language)
+                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, r)
                 .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
                 .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
                 .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, Pcm.RATE)
-                .putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
-                .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false))
-        } catch (e: Exception) { runCatching { write.close() }; finish(SpeechRecognizer.ERROR_CLIENT); return }
-        Thread {
-            var ok = false
+                .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            if (mode == Mode.SEGMENTED) i.putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
+            rec.startListening(i)
+            Thread({ feed(w) }, "transcribe-feed").start()
+        }
+
+        /** Writes the audio in 100 ms chunks, never more than [LEAD_MS] ahead of real time. */
+        private fun feed(w: ParcelFileDescriptor) {
+            val begin = SystemClock.elapsedRealtime()
             try {
-                ParcelFileDescriptor.AutoCloseOutputStream(write).use { out ->
-                    decode(file, out, { cancelled }) { ms -> position = ms; main.post { if (!ended) onUpdate(text, ms) } }
+                ParcelFileDescriptor.AutoCloseOutputStream(w).use { out ->
+                    var pos = from
+                    while (!stop && pos < pcm.size) {
+                        val n = minOf(CHUNK, pcm.size - pos)
+                        out.write(pcm, pos, n); pos += n
+                        fed = pos; lastWrite = SystemClock.elapsedRealtime()
+                        val ahead = ((pos - from) * 1000.0 / BYTES_PER_SEC / speed).toLong() - (SystemClock.elapsedRealtime() - begin)
+                        if (ahead > LEAD_MS) Thread.sleep(ahead - LEAD_MS)
+                    }
                 }
-                ok = true
-            } catch (e: Exception) { runCatching { write.close() } }
+            } catch (e: Exception) { runCatching { w.close() } }
+            if (!stop) main.post { if (live()) { feedDone = true; feedDoneAt = SystemClock.elapsedRealtime(); note("all audio handed over") } }
+        }
+
+        fun end() {
+            stop = true
+            runCatching { rec.cancel() }; runCatching { rec.destroy() }
+            runCatching { read.close() }        // also unblocks a writer the service stopped reading
+        }
+    }
+
+    private var session: Session? = null
+
+    private fun add(b: Bundle?) { Speech.best(b).takeIf { it.isNotEmpty() }?.let { parts += it } }
+    private fun position() = (session?.fed ?: 0) * 1000L / BYTES_PER_SEC
+
+    /** Phrases mode: the next phrase starts where the audio had got to (a little earlier, so no word is cut). */
+    private fun next() {
+        val s = session ?: return
+        val from = maxOf(s.from, s.fed - REWIND_BYTES)
+        s.end()
+        open(from, Mode.PHRASES)
+    }
+
+    private fun open(from: Int, m: Mode) {
+        mode = m
+        val s = Session(from, m)
+        session = s
+        try { s.start() } catch (e: Exception) { note("start failed: ${e.javaClass.simpleName}"); finish(SpeechRecognizer.ERROR_CLIENT) }
+    }
+
+    // ---- the whole job -------------------------------------------------------------------------
+
+    fun start() {
+        note("file ${file.length() / 1024} KB, $language")
+        Thread({
+            val bytes = try {
+                java.io.ByteArrayOutputStream().also { decode(file, it, { cancelled }) { } }.toByteArray()
+            } catch (e: Exception) { note("decode failed: ${e.javaClass.simpleName}"); null }
             main.post {
-                if (ended || cancelled) return@post
-                if (!ok) { recognizer.cancel(); finish(if (parts.isEmpty()) SpeechRecognizer.ERROR_AUDIO else null) }
-                // The whole recording has been handed over; if the service never says it's done, stop waiting.
-                else main.postDelayed({ if (!ended) { recognizer.cancel(); finish(null) } }, END_GRACE_MS)
+                if (ended) return@post
+                if (bytes == null || bytes.size < BYTES_PER_SEC / 10) { finish(SpeechRecognizer.ERROR_AUDIO); return@post }
+                pcm = if (bytes.size % 2 == 0) bytes else bytes.copyOf(bytes.size - 1)
+                note("decoded %.1fs of audio".format(pcm.size / BYTES_PER_SEC.toDouble()))
+                open(0, Mode.SEGMENTED)
+                main.post(watchdog)
             }
-        }.start()
+        }, "transcribe-decode").start()
+    }
+
+    /** Checks twice a second that the speech service is still taking the audio and answering. */
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (ended) return
+            val s = session ?: return
+            val now = SystemClock.elapsedRealtime()
+            if (!s.atEnd()) onUpdate(text, position())
+            val notReading = !s.atEnd() && now - s.lastWrite > FEED_STALL_MS
+            val silent = s.events == 0 && now - s.startedAt > NO_ANSWER_MS
+            when {
+                notReading || silent -> {
+                    note(if (notReading) "service stopped reading the audio" else "no answer from the service")
+                    if (s.mode == Mode.SEGMENTED && parts.isEmpty()) { s.end(); open(0, Mode.PHRASES) }
+                    else finish(if (parts.isEmpty()) NOT_ACCEPTED else null)
+                }
+                s.feedDone && now - s.feedDoneAt > END_GRACE_MS -> {
+                    note("no final answer after the end of the audio")
+                    finish(if (parts.isEmpty()) NOT_ACCEPTED else null)
+                }
+            }
+            if (!ended) main.postDelayed(this, 500)
+        }
     }
 
     /** Stops, keeping what was already transcribed. */
-    fun cancel() { cancelled = true; if (!ended) { runCatching { recognizer.cancel() }; finish(null) } }
+    fun cancel() { cancelled = true; if (!ended) { note("stopped by the person"); finish(null) } }
 
     private fun finish(error: Int?) {
         if (ended) return
         ended = true; cancelled = true
-        runCatching { recognizer.destroy() }
-        source?.let { runCatching { it.close() } }; source = null
+        note("finished" + (error?.let { " with error $it" } ?: ""))
+        session?.end(); session = null
+        main.removeCallbacks(watchdog)
         onEnd(text, error)
     }
 
-    companion object { const val END_GRACE_MS = 30_000L }
+    /** For tests: the recogniser conversation of the current session. */
+    internal val listener: RecognitionListener? get() = session?.listener
+
+    companion object {
+        /** The speech service took no audio or never answered, in either mode. */
+        const val NOT_ACCEPTED = -1
+        const val BYTES_PER_SEC = Pcm.RATE * 2
+        private const val CHUNK = BYTES_PER_SEC / 10
+        private const val LEAD_MS = 500L
+        private const val REWIND_BYTES = BYTES_PER_SEC / 2
+        const val FEED_STALL_MS = 6_000L
+        const val NO_ANSWER_MS = 8_000L
+        const val END_GRACE_MS = 15_000L
+    }
 }

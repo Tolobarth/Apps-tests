@@ -46,7 +46,7 @@ object CrashLog {
         }
     }
 
-    private fun header(c: Context): String {
+    fun header(c: Context): String {
         val version = runCatching { c.packageManager.getPackageInfo(c.packageName, 0).versionName }.getOrNull() ?: "?"
         return "HueNotes $version · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}\n"
     }
