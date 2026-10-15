@@ -157,6 +157,7 @@ class Dictation(
 /** Turning a recording into the 16 kHz mono 16-bit PCM the recogniser reads. */
 object Pcm {
     const val RATE = 16_000
+    private const val STALL_MS = 3000L
 
     /** Averages interleaved channels into one. */
     fun downmix(interleaved: ShortArray, channels: Int): ShortArray {
@@ -215,7 +216,10 @@ object Pcm {
                 var resampler = Resampler(fmt.getInteger(MediaFormat.KEY_SAMPLE_RATE))
                 val info = MediaCodec.BufferInfo()
                 var inputDone = false
+                var lastOutput = System.currentTimeMillis()
                 while (!cancelled()) {
+                    // Some decoders never flag the end of the stream: give up waiting once nothing has come out for a while.
+                    if (inputDone && System.currentTimeMillis() - lastOutput > STALL_MS) break
                     if (!inputDone) {
                         val i = codec.dequeueInputBuffer(10_000)
                         if (i >= 0) {
@@ -229,6 +233,7 @@ object Pcm {
                         val f = codec.outputFormat
                         channels = f.getInteger(MediaFormat.KEY_CHANNEL_COUNT); resampler = Resampler(f.getInteger(MediaFormat.KEY_SAMPLE_RATE))
                     } else if (o >= 0) {
+                        lastOutput = System.currentTimeMillis()
                         val buf = codec.getOutputBuffer(o)!!.order(ByteOrder.LITTLE_ENDIAN)
                         val shorts = ShortArray(info.size / 2)
                         buf.position(info.offset); buf.asShortBuffer().get(shorts)

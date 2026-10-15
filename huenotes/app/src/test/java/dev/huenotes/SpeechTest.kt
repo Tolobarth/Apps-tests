@@ -216,6 +216,24 @@ class SpeechTest {
         assertEquals("" to SpeechRecognizer.ERROR_AUDIO, ended)
     }
 
+    @Test fun freezesAreReportedOnceWithTheMainThreadAndWhatWasGoingOn() {
+        CrashLog.clear(app); app.getSharedPreferences("crash", 0).edit().clear().commit()
+        val am = app.getSystemService(android.app.ActivityManager::class.java)
+        val dump = "----- pid 1 -----\n\"Binder:1\" prio=5\n  at x\n\n\"main\" prio=5 tid=1 Blocked\n  at dev.huenotes.Pcm.decode(Speech.kt:1)\n\nmore"
+        shadowOf(am).addApplicationExitInfo(org.robolectric.shadows.ShadowActivityManager.ApplicationExitInfoBuilder.newBuilder()
+            .setReason(android.app.ApplicationExitInfo.REASON_ANR).setTimestamp(System.currentTimeMillis() - 1000)
+            .setDescription("Input dispatching timed out").setProcessStateSummary("transcribe fr-FR AUDIO 120KB".toByteArray())
+            .setTraceInputStream(dump.byteInputStream()).build())
+        val r = CrashLog.pending(app)!!
+        assertTrue(r, r.contains("freeze (ANR) · doing: transcribe fr-FR AUDIO 120KB"))
+        assertTrue(r, r.substringAfter("Input dispatching timed out\n\n").startsWith("\"main\" prio=5 tid=1 Blocked\n  at dev.huenotes.Pcm.decode"))
+        CrashLog.clear(app)
+        assertNull("not offered again", CrashLog.pending(app))
+    }
+
+    @Test fun nativeCrashTombstonesKeepTheirReadableParts() =
+        assertEquals("libtranslate_jni.so\nTranslatorImpl\n", CrashLog.readable(byteArrayOf(1, 2) + "libtranslate_jni.so".toByteArray() + byteArrayOf(0, 7) + "ab".toByteArray() + byteArrayOf(0) + "TranslatorImpl".toByteArray()))
+
     @Test fun crashReportsAreKeptUntilDealtWith() {
         CrashLog.clear(app)
         val r = CrashLog.report(app, Thread.currentThread(), IllegalStateException("boom"))

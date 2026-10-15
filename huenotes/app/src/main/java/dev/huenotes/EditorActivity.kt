@@ -327,6 +327,7 @@ class EditorActivity : GatedActivity() {
 
     private fun beginDictation(tag: String, online: Boolean) {
         if (dictation != null || transcriber != null || recorder != null) return
+        CrashLog.doing(this, "dictate $tag" + if (online) " online" else "")
         Player.stop()
         val target = dictationTarget()
         val cursor = target.selectionEnd.takeIf { it >= 0 } ?: target.text.length
@@ -335,7 +336,7 @@ class EditorActivity : GatedActivity() {
         val d = Dictation(this, { text, hearing ->
             shown.text = DictationText.join(listOf(text, hearing)).ifEmpty { getString(R.string.dictate_hint) }
         }, { text, error ->
-            speechDialog?.dismiss(); speechDialog = null; dictation = null
+            speechDialog?.dismiss(); speechDialog = null; dictation = null; CrashLog.doing(this, "edit")
             if (!discard && text.isNotBlank()) {
                 val (t, at) = DictationText.insert(target.text.toString(), cursor.coerceAtMost(target.text.length), text)
                 target.setText(t); target.setSelection(at.coerceAtMost(t.length))
@@ -363,13 +364,14 @@ class EditorActivity : GatedActivity() {
 
     private fun beginTranscript(a: Attachment, file: File, tag: String, online: Boolean) {
         if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
+        CrashLog.doing(this, "transcribe $tag ${a.kind} ${file.length() / 1024}KB" + if (online) " online" else "")
         Player.stop()
         val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
         val shown = speechStatusView(AttachmentFiles.duration(0) + total)
         val t = Transcriber(this, file, { text, ms ->
             shown.text = AttachmentFiles.duration(ms) + total + if (text.isEmpty()) "" else "\n\n" + text
         }, { text, error ->
-            speechDialog?.dismiss(); speechDialog = null; transcriber = null
+            speechDialog?.dismiss(); speechDialog = null; transcriber = null; CrashLog.doing(this, "edit")
             if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
             if (error != null) showSpeechError(error)
         }, tag, Speech.create(this, online))
@@ -497,6 +499,7 @@ class EditorActivity : GatedActivity() {
         if (n.title.isBlank() && n.body.isBlank()) { Toast.makeText(this, R.string.translate_empty, Toast.LENGTH_SHORT).show(); return }
         saveNow()
         translating = true
+        CrashLog.doing(this, "translate-detect")
         val sample = (n.title + "\n" + if (n.checklist) Checklist.toPlain(Checklist.parse(n.body)) else n.body).trim()
         Translate.engine.detect(sample) { src ->
             translating = false
@@ -536,6 +539,7 @@ class EditorActivity : GatedActivity() {
 
     /** Like the speech download: progress while Google fetches the packs, then the translation carries on by itself. */
     private fun downloadPacks(src: String, dst: String, missing: List<String>) {
+        CrashLog.doing(this, "translate-download $src>$dst")
         val names = missing.joinToString(", ") { Translate.displayName(it) }
         val wait = busyDialog(getString(R.string.translate_downloading_named, names))
         Translate.engine.download(src, dst) { error ->
@@ -565,6 +569,7 @@ class EditorActivity : GatedActivity() {
 
     /** Makes sure the packs are really there (a no-op when they are) before translating, so a pack that went missing is fetched. */
     private fun translateNote(src: String, dst: String, packsChecked: Boolean = false) {
+        CrashLog.doing(this, "translate $src>$dst")
         val n = current()
         val wait = busyDialog(getString(R.string.translate_working, Translate.displayName(dst)))
         fun run() = Translate.translateTexts(src, dst, Translate.inputs(n)) { out ->
@@ -583,6 +588,7 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun showTranslation(orig: Note, t: Note, dst: String) {
+        CrashLog.doing(this, "edit")
         val plain = listOf(t.title, if (t.checklist) Checklist.toPlain(Checklist.parse(t.body)) else t.body).filter { it.isNotBlank() }.joinToString("\n\n")
         MaterialAlertDialogBuilder(this).setTitle(Translate.displayName(dst)).setMessage(plain)
             .setPositiveButton(R.string.translate_add_below) { _, _ -> addTranslation(t) }
