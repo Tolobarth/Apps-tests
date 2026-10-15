@@ -275,4 +275,28 @@
         <item quantity="one">%1$d file</item>
         <item quantity="other">%1$d files</item>
     </plurals>
+
+    <!-- Dictation and transcription (v0.15) -->
+    <string name="add_dictate">Dictate</string>
+    <string name="cd_dictate">Dictate</string>
+    <string name="dictate_title">Listening…</string>
+    <string name="dictate_hint">Speak now</string>
+    <string name="dictate_done">Done</string>
+    <string name="speech_permission">Allow microphone access to dictate.</string>
+    <string name="transcribe">Transcribe</string>
+    <string name="transcribe_title">Transcribing…</string>
+    <string name="transcribe_stop">Stop</string>
+    <string name="transcribe_added">Transcript added to the note</string>
+    <string name="speech_err_nothing">Didn’t catch that. Try again.</string>
+    <string name="speech_err_language">Speech recognition for this language isn’t on this phone yet.</string>
+    <string name="speech_download">Download</string>
+    <string name="speech_err_network">Speech recognition needs a connection right now.</string>
+    <string name="speech_err_busy">Speech recognition is busy. Try again in a moment.</string>
+    <string name="speech_err_other">Speech recognition stopped unexpectedly.</string>
+    <string name="speech_unavailable">This phone can’t recognise speech by itself. You can allow online speech recognition in Settings; your voice is then sent to the phone’s speech service.</string>
+    <string name="speech_unavailable_none">This phone has no speech recognition.</string>
+    <string name="speech_open_settings">Settings</string>
+    <string name="settings_online_speech">Online speech recognition</string>
+    <string name="settings_online_speech_sum">This phone can’t recognise speech by itself. When on, your voice is sent to the phone’s speech service (usually Google) for dictation and transcripts.</string>
+    <string name="settings_online_speech_sum_ondevice">Not needed: this phone recognises speech by itself, so your voice stays on the phone.</string>
 </resources>

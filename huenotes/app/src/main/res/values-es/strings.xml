@@ -275,4 +275,28 @@
         <item quantity="one">%1$d archivo</item>
         <item quantity="other">%1$d archivos</item>
     </plurals>
+
+    <!-- Dictation and transcription (v0.15) -->
+    <string name="add_dictate">Dictar</string>
+    <string name="cd_dictate">Dictar</string>
+    <string name="dictate_title">Escuchando…</string>
+    <string name="dictate_hint">Habla ahora</string>
+    <string name="dictate_done">Listo</string>
+    <string name="speech_permission">Permite el acceso al micrófono para dictar.</string>
+    <string name="transcribe">Transcribir</string>
+    <string name="transcribe_title">Transcribiendo…</string>
+    <string name="transcribe_stop">Detener</string>
+    <string name="transcribe_added">Transcripción añadida a la nota</string>
+    <string name="speech_err_nothing">No te he entendido. Inténtalo de nuevo.</string>
+    <string name="speech_err_language">El reconocimiento de voz para este idioma aún no está en este teléfono.</string>
+    <string name="speech_download">Descargar</string>
+    <string name="speech_err_network">El reconocimiento de voz necesita conexión ahora mismo.</string>
+    <string name="speech_err_busy">El reconocimiento de voz está ocupado. Inténtalo en un momento.</string>
+    <string name="speech_err_other">El reconocimiento de voz se detuvo inesperadamente.</string>
+    <string name="speech_unavailable">Este teléfono no puede reconocer la voz por sí solo. Puedes permitir el reconocimiento en línea en Ajustes; tu voz se envía entonces al servicio de voz del teléfono.</string>
+    <string name="speech_unavailable_none">Este teléfono no tiene reconocimiento de voz.</string>
+    <string name="speech_open_settings">Ajustes</string>
+    <string name="settings_online_speech">Reconocimiento de voz en línea</string>
+    <string name="settings_online_speech_sum">Este teléfono no puede reconocer la voz por sí solo. Si está activado, tu voz se envía al servicio de voz del teléfono (normalmente Google) para dictados y transcripciones.</string>
+    <string name="settings_online_speech_sum_ondevice">No hace falta: este teléfono reconoce la voz por sí solo, así que tu voz no sale del teléfono.</string>
 </resources>

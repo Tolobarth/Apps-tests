@@ -85,6 +85,10 @@
             android:layout_marginTop="12dp" android:text="@string/add_audio" app:icon="@drawable/ic_mic"
             app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/dialDictate" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/add_dictate" app:icon="@drawable/ic_dictate"
+            app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/dialLink" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/add_link" app:icon="@drawable/ic_link"
             app:backgroundTint="@color/primary_container" android:textColor="@color/on_surface" app:iconTint="@color/on_surface" />

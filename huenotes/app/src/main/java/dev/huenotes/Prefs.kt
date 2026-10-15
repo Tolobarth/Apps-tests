@@ -69,6 +69,10 @@ object Prefs {
     fun fetchLinkTitles(c: Context) = p(c).getBoolean("linkTitles", true)
     fun setFetchLinkTitles(c: Context, v: Boolean) = p(c).edit().putBoolean("linkTitles", v).apply()
 
+    /** Off by default: online recognition sends the voice to the phone's speech service. */
+    fun onlineSpeech(c: Context) = p(c).getBoolean("onlineSpeech", false)
+    fun setOnlineSpeech(c: Context, v: Boolean) = p(c).edit().putBoolean("onlineSpeech", v).apply()
+
     fun backupFolder(c: Context) = p(c).getString("backupFolder", "").orEmpty()
     fun backupFolderName(c: Context) = p(c).getString("backupFolderName", "").orEmpty()
     fun setBackupFolder(c: Context, uri: String, name: String) = p(c).edit().putString("backupFolder", uri).putString("backupFolderName", name).apply()

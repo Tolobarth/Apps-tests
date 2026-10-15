@@ -108,6 +108,10 @@ class SettingsActivity : GatedActivity() {
         }
         switchRow(getString(R.string.settings_spell), getString(R.string.settings_spell_sum), Prefs.suggestions(this)) { Prefs.setSuggestions(this, it) }
         switchRow(getString(R.string.settings_link_titles), getString(R.string.settings_link_titles_sum), Prefs.fetchLinkTitles(this)) { Prefs.setFetchLinkTitles(this, it) }
+        switchRow(getString(R.string.settings_online_speech), getString(when {
+            Speech.onDevice(this) -> R.string.settings_online_speech_sum_ondevice
+            else -> R.string.settings_online_speech_sum
+        }), Prefs.onlineSpeech(this)) { Prefs.setOnlineSpeech(this, it) }
 
         section(R.string.settings_calendar)
         row(getString(R.string.settings_first_day), days[dayValues.indexOf(Prefs.firstDay(this)).coerceAtLeast(0)]) {

@@ -275,4 +275,28 @@
         <item quantity="one">%1$d arquivo</item>
         <item quantity="other">%1$d arquivos</item>
     </plurals>
+
+    <!-- Dictation and transcription (v0.15) -->
+    <string name="add_dictate">Ditar</string>
+    <string name="cd_dictate">Ditar</string>
+    <string name="dictate_title">Ouvindo…</string>
+    <string name="dictate_hint">Fale agora</string>
+    <string name="dictate_done">Concluir</string>
+    <string name="speech_permission">Permita o acesso ao microfone para ditar.</string>
+    <string name="transcribe">Transcrever</string>
+    <string name="transcribe_title">Transcrevendo…</string>
+    <string name="transcribe_stop">Parar</string>
+    <string name="transcribe_added">Transcrição adicionada à nota</string>
+    <string name="speech_err_nothing">Não entendi. Tente de novo.</string>
+    <string name="speech_err_language">O reconhecimento de voz para este idioma ainda não está neste celular.</string>
+    <string name="speech_download">Baixar</string>
+    <string name="speech_err_network">O reconhecimento de voz precisa de conexão agora.</string>
+    <string name="speech_err_busy">O reconhecimento de voz está ocupado. Tente de novo em instantes.</string>
+    <string name="speech_err_other">O reconhecimento de voz parou inesperadamente.</string>
+    <string name="speech_unavailable">Este celular não reconhece voz sozinho. Você pode permitir o reconhecimento on-line nas Configurações; sua voz é então enviada ao serviço de voz do celular.</string>
+    <string name="speech_unavailable_none">Este celular não tem reconhecimento de voz.</string>
+    <string name="speech_open_settings">Configurações</string>
+    <string name="settings_online_speech">Reconhecimento de voz on-line</string>
+    <string name="settings_online_speech_sum">Este celular não reconhece voz sozinho. Se ativado, sua voz é enviada ao serviço de voz do celular (geralmente o Google) para ditados e transcrições.</string>
+    <string name="settings_online_speech_sum_ondevice">Não é necessário: este celular reconhece voz sozinho, então sua voz fica no aparelho.</string>
 </resources>

@@ -98,18 +98,18 @@ class ListActivity : GatedActivity() {
         nav.menu.findItem(if (showArchive) R.id.nav_archive else R.id.nav_notes).isChecked = true
     }
 
-    /** [start] makes a new note begin with that action: "image", "drawing", "audio", "list" or "text". */
+    /** [start] makes a new note begin with that action: "image", "drawing", "audio", "dictate", "list" or "text". */
     private fun openEditor(id: Long, start: String? = null) =
         startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("start", start))
 
-    private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialLink to "link", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
+    private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialLink to "link", R.id.dialDictate to "dictate", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
     private var dialOpen = false
 
     private val closeDial = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed() = setDial(false)
     }
 
-    /** The "+" button fans out Image / Drawing / Audio / List / Text over a dimmed screen. */
+    /** The "+" button fans out Image / Drawing / Audio / Dictate / Link / List / Text over a dimmed screen. */
     internal fun setDial(open: Boolean, animate: Boolean = true) {
         dialOpen = open
         closeDial.isEnabled = open

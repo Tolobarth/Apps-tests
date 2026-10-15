@@ -53,6 +53,9 @@
         <ImageButton android:id="@+id/drawButton" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_brush"
             android:tint="@color/note_text" android:contentDescription="@string/cd_add_drawing" />
+        <ImageButton android:id="@+id/dictateButton" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_dictate"
+            android:tint="@color/note_text" android:contentDescription="@string/cd_dictate" />
         <ImageButton android:id="@+id/micButton" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_mic"
             android:tint="@color/note_text" android:contentDescription="@string/cd_add_audio" />

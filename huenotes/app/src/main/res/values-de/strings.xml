@@ -275,4 +275,28 @@
         <item quantity="one">%1$d Datei</item>
         <item quantity="other">%1$d Dateien</item>
     </plurals>
+
+    <!-- Dictation and transcription (v0.15) -->
+    <string name="add_dictate">Diktieren</string>
+    <string name="cd_dictate">Diktieren</string>
+    <string name="dictate_title">Höre zu…</string>
+    <string name="dictate_hint">Jetzt sprechen</string>
+    <string name="dictate_done">Fertig</string>
+    <string name="speech_permission">Erlaube den Mikrofonzugriff zum Diktieren.</string>
+    <string name="transcribe">Transkribieren</string>
+    <string name="transcribe_title">Transkribiere…</string>
+    <string name="transcribe_stop">Stopp</string>
+    <string name="transcribe_added">Transkript zur Notiz hinzugefügt</string>
+    <string name="speech_err_nothing">Nicht verstanden. Bitte noch einmal.</string>
+    <string name="speech_err_language">Spracherkennung für diese Sprache ist noch nicht auf diesem Telefon.</string>
+    <string name="speech_download">Herunterladen</string>
+    <string name="speech_err_network">Die Spracherkennung braucht gerade eine Verbindung.</string>
+    <string name="speech_err_busy">Die Spracherkennung ist beschäftigt. Versuche es gleich noch einmal.</string>
+    <string name="speech_err_other">Die Spracherkennung wurde unerwartet beendet.</string>
+    <string name="speech_unavailable">Dieses Telefon kann Sprache nicht selbst erkennen. Du kannst Online-Spracherkennung in den Einstellungen erlauben; deine Stimme wird dann an den Sprachdienst des Telefons gesendet.</string>
+    <string name="speech_unavailable_none">Dieses Telefon hat keine Spracherkennung.</string>
+    <string name="speech_open_settings">Einstellungen</string>
+    <string name="settings_online_speech">Online-Spracherkennung</string>
+    <string name="settings_online_speech_sum">Dieses Telefon kann Sprache nicht selbst erkennen. Wenn an, wird deine Stimme für Diktate und Transkripte an den Sprachdienst des Telefons (meist Google) gesendet.</string>
+    <string name="settings_online_speech_sum_ondevice">Nicht nötig: Dieses Telefon erkennt Sprache selbst, deine Stimme bleibt auf dem Telefon.</string>
 </resources>

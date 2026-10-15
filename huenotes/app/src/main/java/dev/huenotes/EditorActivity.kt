@@ -66,8 +66,14 @@ class EditorActivity : GatedActivity() {
         val path = r.data?.getStringExtra("path")
         if (r.resultCode == RESULT_OK && path != null) addDrawing(File(path)) else editingDrawing = null
     }
+    private var dictation: Dictation? = null
+    private var transcriber: Transcriber? = null
+    private var speechDialog: androidx.appcompat.app.AlertDialog? = null
+    private var dictateAfterPermission = false
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) showRecorder() else Toast.makeText(this, R.string.rec_permission, Toast.LENGTH_LONG).show()
+        val dictate = dictateAfterPermission; dictateAfterPermission = false
+        if (ok) { if (dictate) startDictation() else showRecorder() }
+        else Toast.makeText(this, if (dictate) R.string.speech_permission else R.string.rec_permission, Toast.LENGTH_LONG).show()
     }
 
     override fun onCreate(s: Bundle?) {
@@ -127,6 +133,7 @@ class EditorActivity : GatedActivity() {
         findViewById<View>(R.id.imageButton).setOnClickListener { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         findViewById<View>(R.id.drawButton).setOnClickListener { launchDrawing(null) }
         findViewById<View>(R.id.micButton).setOnClickListener { showRecorder() }
+        findViewById<View>(R.id.dictateButton).setOnClickListener { startDictation() }
         applyColor()
         renderMeta()
         if (start != null) window.decorView.post {
@@ -134,6 +141,7 @@ class EditorActivity : GatedActivity() {
                 "image" -> pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 "drawing" -> launchDrawing(null)
                 "audio" -> showRecorder()
+                "dictate" -> { bodyEdit.requestFocus(); startDictation() }
                 "text" -> bodyEdit.requestFocus()
             }
         }
@@ -155,6 +163,8 @@ class EditorActivity : GatedActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Android silences the mic for apps in the background: keep what was recognised so far (it is saved just below).
+        dictation?.cancel(); transcriber?.cancel()
         if (deleted) return
         val n = current()
         if (n.isEmpty && attachments.isEmpty()) { if (n.id != 0L) { store.delete(n.id); Reminders.cancel(this, n.id) }; return }
@@ -279,6 +289,116 @@ class EditorActivity : GatedActivity() {
         attach(a)
     }
 
+    // ---- speech ------------------------------------------------------------------------------
+
+    /** Where dictated words go: the field being typed in, else a new checklist row, else the end of the text. */
+    private fun dictationTarget(): EditText {
+        val f = currentFocus as? EditText
+        if (f != null && (f === titleEdit || f === bodyEdit || isInChecklist(f))) return f
+        if (!inChecklist()) return bodyEdit.also { it.requestFocus(); it.setSelection(it.text.length) }
+        val last = list.getChildAt(list.childCount - 1)?.findViewById<EditText>(R.id.text)
+        if (last != null && last.text.isBlank()) return last.also { it.requestFocus() }
+        val (items, pos) = Checklist.insertBelow(currentItems(), list.childCount - 1)
+        addRow(items[pos], pos, focus = true); applyStates(items)
+        return list.getChildAt(pos).findViewById(R.id.text)
+    }
+
+    private fun isInChecklist(v: View): Boolean {
+        var p = v.parent
+        while (p is View) { if (p === list) return true; p = p.parent }
+        return false
+    }
+
+    private fun speechStatusView(initial: String) = TextView(this).apply {
+        text = initial; textSize = 18f; setTextColor(getColor(R.color.on_surface)); minHeight = Palette.dp(context, 96)
+        setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
+    }
+
+    private fun startDictation() {
+        if (dictation != null || transcriber != null || recorder != null) return
+        if (!Speech.canDictate(this)) { explainNoSpeech(); return }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            dictateAfterPermission = true; micPermission.launch(Manifest.permission.RECORD_AUDIO); return
+        }
+        Player.stop()
+        val target = dictationTarget()
+        val cursor = target.selectionEnd.takeIf { it >= 0 } ?: target.text.length
+        val shown = speechStatusView(getString(R.string.dictate_hint))
+        var discard = false
+        val d = Dictation(this, { text, hearing ->
+            shown.text = DictationText.join(listOf(text, hearing)).ifEmpty { getString(R.string.dictate_hint) }
+        }, { text, error ->
+            speechDialog?.dismiss(); speechDialog = null; dictation = null
+            if (!discard && text.isNotBlank()) {
+                val (t, at) = DictationText.insert(target.text.toString(), cursor.coerceAtMost(target.text.length), text)
+                target.setText(t); target.setSelection(at.coerceAtMost(t.length))
+            }
+            if (error != null && !discard) showSpeechError(error)
+        })
+        dictation = d
+        speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.dictate_title).setView(shown)
+            .setPositiveButton(R.string.dictate_done) { _, _ -> d.stop() }
+            .setNegativeButton(R.string.btn_cancel) { _, _ -> discard = true; d.cancel() }
+            .setCancelable(false).show()
+        d.start()
+    }
+
+    /** Voice notes (and received audio files) can be turned into text on Android 13+. */
+    private fun canTranscribe(a: Attachment) =
+        (a.kind == AttachmentKind.AUDIO || (a.kind == AttachmentKind.FILE && a.mimeType.startsWith("audio/"))) && Speech.canTranscribe(this)
+
+    private fun transcribe(a: Attachment) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
+        val file = store.storage.file(a)
+        if (!file.exists()) { Toast.makeText(this, R.string.file_not_here, Toast.LENGTH_SHORT).show(); return }
+        Player.stop()
+        val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
+        val shown = speechStatusView(AttachmentFiles.duration(0) + total)
+        val t = Transcriber(this, file, { text, ms ->
+            shown.text = AttachmentFiles.duration(ms) + total + if (text.isEmpty()) "" else "\n\n" + text
+        }, { text, error ->
+            speechDialog?.dismiss(); speechDialog = null; transcriber = null
+            if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
+            if (error != null) showSpeechError(error)
+        })
+        transcriber = t
+        speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.transcribe_title).setView(shown)
+            .setNegativeButton(R.string.transcribe_stop) { _, _ -> t.cancel() }
+            .setCancelable(false).show()
+        t.start()
+    }
+
+    /** A transcript goes at the end of the note: a new paragraph, or a new checklist row. */
+    private fun addTranscript(text: String) {
+        if (inChecklist()) {
+            val last = list.getChildAt(list.childCount - 1)?.findViewById<EditText>(R.id.text)
+            if (last != null && last.text.isBlank()) last.setText(text)
+            else {
+                val (items, pos) = Checklist.insertBelow(currentItems(), list.childCount - 1)
+                addRow(items[pos].copy(text = text), pos, focus = false); applyStates(items)
+            }
+        } else {
+            val body = bodyEdit.text.toString().trimEnd()
+            bodyEdit.setText(if (body.isEmpty()) text else body + "\n\n" + text)
+        }
+        saveNow(); renderMeta()
+    }
+
+    private fun showSpeechError(error: Int) {
+        if (Speech.isMissingLanguage(error) && android.os.Build.VERSION.SDK_INT >= 33 && Speech.onDevice(this)) {
+            MaterialAlertDialogBuilder(this).setMessage(R.string.speech_err_language)
+                .setPositiveButton(R.string.speech_download) { _, _ -> Speech.downloadLanguage(this) }
+                .setNegativeButton(R.string.btn_cancel, null).show()
+        } else Toast.makeText(this, Speech.errorText(error), Toast.LENGTH_LONG).show()
+    }
+
+    private fun explainNoSpeech() {
+        val any = android.speech.SpeechRecognizer.isRecognitionAvailable(this)
+        val b = MaterialAlertDialogBuilder(this).setMessage(if (any) R.string.speech_unavailable else R.string.speech_unavailable_none)
+        if (any) b.setPositiveButton(R.string.speech_open_settings) { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
+        b.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
     private fun renderAttachments() {
         attachBox.removeAllViews()
         attachments.forEach { a ->
@@ -342,9 +462,10 @@ class EditorActivity : GatedActivity() {
     private fun showAttachmentMenu(anchor: View, a: Attachment) {
         android.widget.PopupMenu(this, anchor).apply {
             if (a.kind == AttachmentKind.FILE) menu.add(0, 4, 0, R.string.file_open)
+            if (canTranscribe(a)) menu.add(0, 5, 0, R.string.transcribe)
             menu.add(0, 1, 1, R.string.action_share); menu.add(0, 2, 2, R.string.attach_save); menu.add(0, 3, 3, R.string.attach_remove)
             setOnMenuItemClickListener {
-                when (it.itemId) { 1 -> shareAttachment(a); 2 -> saveAttachment(a); 3 -> confirmRemove(a); 4 -> openFile(a) }
+                when (it.itemId) { 1 -> shareAttachment(a); 2 -> saveAttachment(a); 3 -> confirmRemove(a); 4 -> openFile(a); 5 -> transcribe(a) }
                 true
             }
             show()
