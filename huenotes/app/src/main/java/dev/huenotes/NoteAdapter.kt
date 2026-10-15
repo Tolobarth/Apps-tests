@@ -30,6 +30,8 @@ class NoteAdapter(
     private var rows: List<Row> = emptyList()
     var showTimeOnly = false
     var storage: AttachmentStorage? = null
+    /** While searching: note uid to the bit of photo text that matched. */
+    var photoMatches: Map<String, String> = emptyMap()
     private var attachments: Map<String, List<Attachment>> = emptyMap()
 
     /** With [groupPinned], pinned notes get a "Pinned" header and the rest an "Others" header. */
@@ -59,6 +61,7 @@ class NoteAdapter(
         val audio: TextView = v.findViewById(R.id.audio)
         val files: TextView = v.findViewById(R.id.files)
         val labels: TextView = v.findViewById(R.id.labels)
+        val found: TextView = v.findViewById(R.id.found)
         val link: TextView = v.findViewById(R.id.link)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
@@ -121,6 +124,9 @@ class NoteAdapter(
             h.files.text = files.singleOrNull()?.name?.ifBlank { null } ?: c.resources.getQuantityString(R.plurals.card_files, files.size, files.size)
             h.files.visibility = View.VISIBLE
         } else h.files.visibility = View.GONE
+        val inPhoto = photoMatches[n.uid]
+        h.found.text = inPhoto?.let { c.getString(R.string.photo_text_found, it) }
+        h.found.visibility = if (inPhoto == null) View.GONE else View.VISIBLE
         h.labels.text = n.labels.joinToString(" · ")
         h.labels.visibility = if (n.labels.isEmpty()) View.GONE else View.VISIBLE
         if (items.any { it.text.isNotBlank() }) {
@@ -134,7 +140,7 @@ class NoteAdapter(
             else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(d)
             h.reminder.visibility = View.VISIBLE
         } else h.reminder.visibility = View.GONE
-        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.files, h.labels, h.reminder).any { it.visibility == View.VISIBLE }
+        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.files, h.found, h.labels, h.reminder).any { it.visibility == View.VISIBLE }
         h.content.visibility = if (anyText) View.VISIBLE else View.GONE
     }
 

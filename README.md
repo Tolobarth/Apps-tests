@@ -208,3 +208,10 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - **List**: each label is a chip next to Links and the colours; tap to show only those notes (it combines with search and colour), long-press to rename or delete it everywhere. Search also finds label names. A new note made while a label is selected gets that label.
 - **Saved filters**: when a search, colour or label is active, a **Save filter** chip names the combination; saved filters appear first in the chip row (tap to apply or clear, long-press to rename or delete). They are kept on this phone.
 - Labels live on the note (DB v8 `labels` column), so they sync, back up, restore, export to Markdown ("Labels: …") and come in from Google Keep. The sync file (format 4) and backups (version 5) move up only once a note has a label, so older HueNotes installs ask to be updated instead of dropping labels. Changing labels doesn't change "last edited".
+
+### v0.23 — Search text in photos, and type chips
+- **Search text in photos** (Settings → Notes, or the **Also search photos** chip that appears while searching): the text in photos, pictures and PDFs (first 3 pages) is read on the phone with Google's ML Kit text recognition, so search finds notes by what their photos say, and the card quotes the match ("In a photo: …"). Off by default; turning it on asks before the one-time model download (via Google Play services) and shows progress. Photos are read in the background (WorkManager) as they are added, synced or shared in; Settings shows how many have been read.
+- The text read is stored next to each attachment (DB v9 `ocr` column), **local only**: not synced or backed up, so no format change; each phone reads its own copies, and a sync rewriting a note's attachments keeps what was already read.
+- **Type chips** in the list: Photos, Voice, Lists, Files (next to Links). They combine with search, colour and labels, and saved filters remember them.
+- Database upgrades now skip columns that already exist, so a repeated or interrupted upgrade can't fail.
+- Not yet tried on a device: ML Kit text recognition itself (tests use a fake recogniser).

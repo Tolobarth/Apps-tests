@@ -26,6 +26,12 @@ speech app on your phone, which recognises it on the device; its speech model is
 Like other ML Kit features it may send Google diagnostic information (device and app information, performance and error data), not
 the recording.
 
+## Search text in photos
+Off until you turn it on. Then the text in your photos and PDFs is read **on your phone** with Google's ML Kit text recognition
+(through Google Play services), only so that search can find it. The recognition model is downloaded once from Google after you
+agree. The text read stays on the phone (it is not synced or backed up). Like other ML Kit features it may send Google diagnostic
+information, not your photos or their text.
+
 ## Translation
 Notes are translated **on your phone** with Google's ML Kit. Your note text is not sent anywhere. Each language pack (about 30 MB) is
 downloaded from Google the first time you need it, and can be deleted in Settings → Notes → Translation languages. As Google documents

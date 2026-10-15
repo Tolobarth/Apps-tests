@@ -46,18 +46,34 @@ object Labels {
     fun fromJson(o: JSONObject): List<String> = o.optJSONArray("labels")?.let { a -> normalize((0 until a.length()).map { a.optString(it) }) } ?: emptyList()
 }
 
-/** A named combination of search text, colour and label, shown as a chip at the top of the list. Kept on this phone. */
-data class SavedFilter(val name: String, val query: String = "", val color: Int? = null, val label: String? = null) {
-    fun matches(n: Note) = (color == null || n.color == color) && (label == null || Labels.has(n, label)) &&
+/** What kind of content a note has, for the type chips in the list. */
+enum class NoteType(val icon: Int, val title: Int) {
+    PHOTOS(R.drawable.ic_image, R.string.type_photos), VOICE(R.drawable.ic_mic, R.string.type_voice),
+    LISTS(R.drawable.ic_checklist, R.string.type_lists), FILES(R.drawable.ic_file, R.string.type_files);
+
+    fun matches(n: Note, atts: List<Attachment>) = when (this) {
+        PHOTOS -> atts.any { it.kind == AttachmentKind.IMAGE || it.kind == AttachmentKind.DRAWING || (it.kind == AttachmentKind.FILE && it.mimeType.startsWith("image/")) }
+        VOICE -> atts.any { it.kind == AttachmentKind.AUDIO || (it.kind == AttachmentKind.FILE && it.mimeType.startsWith("audio/")) }
+        LISTS -> n.checklist
+        FILES -> atts.any { it.kind == AttachmentKind.FILE }
+    }
+
+    companion object { fun of(name: String?) = values().firstOrNull { it.name == name } }
+}
+
+/** A named combination of search text, colour, label and type, shown as a chip at the top of the list. Kept on this phone. */
+data class SavedFilter(val name: String, val query: String = "", val color: Int? = null, val label: String? = null, val type: NoteType? = null) {
+    fun matches(n: Note, atts: List<Attachment> = emptyList()) = (color == null || n.color == color) && (label == null || Labels.has(n, label)) &&
+        (type == null || type.matches(n, atts)) &&
         (query.isBlank() || listOf(n.title, n.body).any { it.contains(query.trim(), ignoreCase = true) } || n.labels.any { it.contains(query.trim(), ignoreCase = true) })
 
     fun toJson(): JSONObject = JSONObject().put("name", name).put("query", query).apply {
-        color?.let { put("color", it) }; label?.let { put("label", it) }
+        color?.let { put("color", it) }; label?.let { put("label", it) }; type?.let { put("type", it.name) }
     }
 
     companion object {
         fun fromJson(o: JSONObject) = SavedFilter(o.optString("name"), o.optString("query"),
-            if (o.has("color")) o.optInt("color") else null, o.optString("label").ifEmpty { null })
+            if (o.has("color")) o.optInt("color") else null, o.optString("label").ifEmpty { null }, NoteType.of(o.optString("type")))
 
         fun listToJson(l: List<SavedFilter>) = JSONArray(l.map { it.toJson() }).toString()
         fun listFromJson(s: String): List<SavedFilter> = runCatching {

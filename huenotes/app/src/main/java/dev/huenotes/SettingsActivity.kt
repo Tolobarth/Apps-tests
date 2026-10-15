@@ -113,6 +113,12 @@ class SettingsActivity : GatedActivity() {
             else -> R.string.settings_online_speech_sum
         }), Prefs.onlineSpeech(this)) { Prefs.setOnlineSpeech(this, it) }
         row(getString(R.string.settings_translate_packs), getString(R.string.settings_translate_packs_sum)) { manageTranslationPacks() }
+        val (read, photos) = NoteStore(this).photoTextProgress()
+        switchRow(getString(R.string.photo_text_title),
+            if (Prefs.photoText(this)) getString(R.string.photo_text_progress, read, photos) else getString(R.string.photo_text_sum),
+            Prefs.photoText(this)) { on ->
+            if (on) PhotoTextSetup.enable(this) { render() } else { Prefs.setPhotoText(this, false); render() }
+        }
 
         section(R.string.settings_calendar)
         row(getString(R.string.settings_first_day), days[dayValues.indexOf(Prefs.firstDay(this)).coerceAtLeast(0)]) {

@@ -24,6 +24,10 @@ https://developers.google.com/ml-kit/android-data-disclosure
 `com.google.mlkit:genai-speech-recognition` (alpha) transcribes recordings via Google's speech app on the device. Check Google's ML
 Kit data disclosure page for its entry (it was not listed when this was written) and declare it like the translation SDK.
 
+## ML Kit text recognition (v0.23)
+`play-services-mlkit-text-recognition` reads text in photos on the device when "Search text in photos" is on. Declare it per
+Google's ML Kit data disclosure (diagnostics), like the other ML Kit SDKs.
+
 ## Speech
 Dictation uses the phone's speech service; on-device by default, so no audio leaves the phone through HueNotes. With "Online speech
 recognition" allowed, audio goes to the phone's speech service (a system app, normally Google's), not to the developer; check whether

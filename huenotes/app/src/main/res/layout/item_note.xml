@@ -34,6 +34,11 @@
                 android:drawableStart="@drawable/ic_file" android:drawableTint="@color/note_text_variant"
                 android:textSize="12sp" android:textColor="@color/note_text_variant" android:visibility="gone"
                 android:maxLines="1" android:ellipsize="middle" />
+            <TextView android:id="@+id/found" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="10dp" android:drawablePadding="6dp" android:gravity="center_vertical"
+                android:drawableStart="@drawable/ic_search" android:drawableTint="@color/note_text_variant"
+                android:textSize="12sp" android:textStyle="italic" android:textColor="@color/note_text_variant"
+                android:visibility="gone" android:maxLines="2" android:ellipsize="end" />
             <TextView android:id="@+id/labels" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="10dp" android:drawablePadding="6dp" android:gravity="center_vertical"
                 android:drawableStart="@drawable/ic_label" android:drawableTint="@color/note_text_variant"

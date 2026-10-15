@@ -369,4 +369,19 @@
     <string name="filter_save">Salvar filtro</string>
     <string name="filter_default_name">Meu filtro</string>
     <string name="filter_delete">Excluir filtro</string>
+
+    <!-- Search text in photos, type filters (v0.23) -->
+    <string name="photo_text_title">Pesquisar texto nas fotos</string>
+    <string name="photo_text_sum">Lê o texto das suas fotos e PDFs neste celular para que a pesquisa o encontre. Requer um download único do Google.</string>
+    <string name="photo_text_progress">Ativado · texto lido em %1$d de %2$d fotos e PDFs</string>
+    <string name="photo_text_setup_msg">Para encontrar texto em fotos e PDFs, o reconhecimento de texto do Google precisa ser baixado uma vez (pelos serviços do Google Play, poucos MB). Depois a leitura acontece neste celular; suas fotos ficam nele.</string>
+    <string name="photo_text_downloading">Baixando o reconhecimento de texto…</string>
+    <string name="photo_text_on">A pesquisa nas fotos está ativada. Suas fotos estão sendo lidas em segundo plano.</string>
+    <string name="photo_text_failed">Não foi possível baixar o reconhecimento de texto. Verifique a conexão e tente de novo.</string>
+    <string name="photo_text_offer">Pesquisar também nas fotos</string>
+    <string name="photo_text_found">Em uma foto: %1$s</string>
+    <string name="type_photos">Fotos</string>
+    <string name="type_voice">Voz</string>
+    <string name="type_lists">Listas</string>
+    <string name="type_files">Arquivos</string>
 </resources>

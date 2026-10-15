@@ -34,6 +34,7 @@ class ListActivity : GatedActivity() {
     private var showArchive = false
     private var colorFilter: Int? = null
     private var labelFilter: String? = null
+    private var typeFilter: NoteType? = null
     private var linksOnly = false
 
     override fun onCreate(s: Bundle?) {
@@ -92,6 +93,7 @@ class ListActivity : GatedActivity() {
         Snapshots.maybeRun(this, store)
         refresh()
         SyncManager.syncIfDue(this) { if (!isFinishing) refresh() }
+        PhotoText.schedule(this)
         offerCrashReport()
     }
 
@@ -167,8 +169,9 @@ class ListActivity : GatedActivity() {
         // The links section is built from all notes of this tab, so every link appears by itself.
         val everyNote = Sorter.sort(store.list(showArchive), Prefs.sort(this))
         val allLinks = LinkIndex.entries(everyNote)
-        val searching = search.text.isNotBlank() || colorFilter != null || labelFilter != null
-        val byLabel: (Note) -> Boolean = { n -> labelFilter.let { it == null || Labels.has(n, it) } }
+        val searching = search.text.isNotBlank() || colorFilter != null || labelFilter != null || typeFilter != null
+        val atts = store.attachmentsByNote()
+        val byLabel: (Note) -> Boolean = { n -> labelFilter.let { it == null || Labels.has(n, it) } && typeFilter.let { it == null || it.matches(n, atts[n.uid].orEmpty()) } }
         val visibleCount: Int
         if (linksOnly) {
             val rows = LinkIndex.filter(allLinks.filter { (colorFilter == null || it.note.color == colorFilter) && byLabel(it.note) }, search.text.toString())
@@ -180,9 +183,10 @@ class ListActivity : GatedActivity() {
             val byColour = (colorFilter?.let { f -> all.filter { it.color == f } } ?: all).filter(byLabel)
             val shown = Sorter.sort(byColour, Prefs.sort(this))
             if (recycler.adapter !== adapter) recycler.adapter = adapter
+            adapter.photoMatches = if (Prefs.photoText(this)) store.photoTextMatches(search.text.toString()) else emptyMap()
             adapter.submit(shown, groupPinned = !showArchive,
                 pinnedLabel = getString(R.string.section_pinned), othersLabel = getString(R.string.section_others),
-                attachments = store.attachmentsByNote())
+                attachments = atts)
             visibleCount = shown.size
         }
 
@@ -195,7 +199,7 @@ class ListActivity : GatedActivity() {
 
         filterRow.removeAllViews()
         val saved = Prefs.savedFilters(this)
-        val current = SavedFilter("", search.text.toString().trim(), colorFilter, labelFilter)
+        val current = SavedFilter("", search.text.toString().trim(), colorFilter, labelFilter, typeFilter)
         saved.forEach { f ->
             filterRow.addView(chip(f.name, R.drawable.ic_search, checked = f.copy(name = "") == current,
                 onClick = { if (f.copy(name = "") == current) applyFilter(SavedFilter("")) else applyFilter(f) },
@@ -206,12 +210,21 @@ class ListActivity : GatedActivity() {
             setChipIconResource(R.drawable.ic_link); isChipIconVisible = true; isCheckedIconVisible = false
             setOnClickListener { linksOnly = !linksOnly; refresh() }
         })
+        NoteType.values().forEach { t ->
+            filterRow.addView(chip(getString(t.title), t.icon, checked = typeFilter == t,
+                onClick = { typeFilter = if (typeFilter == t) null else t; refresh() }, onLong = null))
+        }
         LabelDialogs.known(this, store).forEach { name ->
             filterRow.addView(chip(name, R.drawable.ic_label, checked = labelFilter?.let { Labels.same(it, name) } == true,
                 onClick = { labelFilter = if (labelFilter?.let { Labels.same(it, name) } == true) null else name; refresh() },
                 onLong = { LabelDialogs.manage(this, store, name) { if (labelFilter?.let { Labels.same(it, name) } == true) labelFilter = null; refresh() } }))
         }
-        val active = current.query.isNotEmpty() || current.color != null || current.label != null
+        val active = current.query.isNotEmpty() || current.color != null || current.label != null || current.type != null
+        // Searching while photo text is off: offer to look inside photos too.
+        if (current.query.isNotEmpty() && !Prefs.photoText(this) && store.photoTextProgress().second > 0) {
+            filterRow.addView(chip(getString(R.string.photo_text_offer), R.drawable.ic_image, checked = false,
+                onClick = { PhotoTextSetup.enable(this) { refresh() } }, onLong = null), 0)
+        }
         if (active && saved.none { it.copy(name = "") == current }) {
             filterRow.addView(chip(getString(R.string.filter_save), R.drawable.ic_add, checked = false, onClick = { saveFilter(current) }, onLong = null))
         }
@@ -233,14 +246,14 @@ class ListActivity : GatedActivity() {
     }
 
     private fun applyFilter(f: SavedFilter) {
-        colorFilter = f.color; labelFilter = f.label
+        colorFilter = f.color; labelFilter = f.label; typeFilter = f.type
         if (search.text.toString() != f.query) search.setText(f.query)       // its watcher refreshes
         refresh()
     }
 
     /** Names the current search/colour/label so it can be brought back with one tap. */
     private fun saveFilter(f: SavedFilter) {
-        val suggestion = listOfNotNull(f.label, f.query.takeIf { it.isNotEmpty() }?.let { "\u201c$it\u201d" }).joinToString(" · ").ifEmpty { getString(R.string.filter_default_name) }
+        val suggestion = listOfNotNull(f.label, f.type?.let { getString(it.title) }, f.query.takeIf { it.isNotEmpty() }?.let { "\u201c$it\u201d" }).joinToString(" · ").ifEmpty { getString(R.string.filter_default_name) }
         LabelDialogs.ask(this, R.string.filter_save, suggestion.take(Labels.MAX_LENGTH)) { name ->
             Prefs.setSavedFilters(this, Prefs.savedFilters(this).filterNot { it.name == name } + f.copy(name = name))
             refresh()

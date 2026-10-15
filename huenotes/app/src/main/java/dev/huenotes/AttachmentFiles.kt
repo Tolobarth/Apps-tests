@@ -111,6 +111,29 @@ object AttachmentFiles {
         } catch (e: Exception) { null }
     }
 
+    /** Up to [maxPages] PDF pages, one at a time, not cached (for reading their text). */
+    fun pdfPages(file: File, maxEdge: Int, maxPages: Int, each: (Bitmap) -> Unit) {
+        PdfRenderer(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)).use { pdf ->
+            for (i in 0 until minOf(pdf.pageCount, maxPages)) pdf.openPage(i).use { page ->
+                val s = maxEdge.toFloat() / maxOf(page.width, page.height)
+                val bmp = Bitmap.createBitmap(maxOf(1, (page.width * s).toInt()), maxOf(1, (page.height * s).toInt()), Bitmap.Config.ARGB_8888)
+                bmp.eraseColor(Color.WHITE)
+                page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                each(bmp); bmp.recycle()
+            }
+        }
+    }
+
+    /** A picture decoded no larger than [maxEdge], not cached; null if it isn't one. */
+    fun decodeLarge(file: File, maxEdge: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.path, bounds)
+        if (bounds.outWidth <= 0) return null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxEdge) sample *= 2
+        return BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+
     /** What to show for an attachment on a card or in the editor: the picture, a PDF's first page, or null. */
     fun preview(storage: AttachmentStorage, a: Attachment, maxEdge: Int): Bitmap? = when {
         a.kind == AttachmentKind.IMAGE || a.kind == AttachmentKind.DRAWING -> thumb(storage.file(a), maxEdge)

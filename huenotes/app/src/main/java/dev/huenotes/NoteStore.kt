@@ -10,7 +10,7 @@ class NoteStore(
     context: Context,
     name: String = "huenotes.db",
     val storage: AttachmentStorage = AttachmentStorage.of(context),
-) : SQLiteOpenHelper(context.applicationContext, name, null, 8) {
+) : SQLiteOpenHelper(context.applicationContext, name, null, 9) {
     /** Clock for version spacing; tests replace it. */
     var clock: () -> Long = System::currentTimeMillis
     private val appContext = context.applicationContext
@@ -37,7 +37,7 @@ class NoteStore(
     }
 
     private fun createAttachments(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', mime TEXT NOT NULL DEFAULT '')")
+        db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', mime TEXT NOT NULL DEFAULT '', ocr TEXT)")
         db.execSQL("CREATE INDEX attachments_note ON attachments(note_uid)")
     }
 
@@ -58,11 +58,18 @@ class NoteStore(
         if (o < 4) createAttachments(db)
         if (o < 5) createVersions(db)
         if (o < 6) db.execSQL("CREATE TABLE sync_base(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
-        if (o < 8) db.execSQL("ALTER TABLE notes ADD COLUMN labels TEXT NOT NULL DEFAULT ''")
+        if (o < 8) addColumn(db, "notes", "labels", "TEXT NOT NULL DEFAULT ''")
         if (o in 4..6) {      // attachments created by v4-v6 lack the file name and type columns
-            db.execSQL("ALTER TABLE attachments ADD COLUMN name TEXT NOT NULL DEFAULT ''")
-            db.execSQL("ALTER TABLE attachments ADD COLUMN mime TEXT NOT NULL DEFAULT ''")
+            addColumn(db, "attachments", "name", "TEXT NOT NULL DEFAULT ''")
+            addColumn(db, "attachments", "mime", "TEXT NOT NULL DEFAULT ''")
         }
+        if (o in 4..8) addColumn(db, "attachments", "ocr", "TEXT")      // text read from photos, local only
+    }
+
+    /** Adds a column unless it is already there, so an interrupted or repeated upgrade can't fail. */
+    private fun addColumn(db: SQLiteDatabase, table: String, column: String, type: String) {
+        val has = db.rawQuery("PRAGMA table_info($table)", null).use { c -> generateSequence { if (c.moveToNext()) c.getString(1) else null }.any { it == column } }
+        if (!has) db.execSQL("ALTER TABLE $table ADD COLUMN $column $type")
     }
 
     private fun Cursor.toNote() = Note(
@@ -77,8 +84,8 @@ class NoteStore(
     /** Live notes (not in the trash), newest edit first; sorting for display is done by [Sorter]. */
     fun list(archived: Boolean, query: String = ""): List<Note> {
         val like = "%${query.trim()}%"
-        return query("archived=? AND deleted_at=0 AND (title LIKE ? OR body LIKE ? OR labels LIKE ?)",
-            arrayOf(if (archived) "1" else "0", like, like, like), "modified_at DESC")
+        return query("archived=? AND deleted_at=0 AND (title LIKE ? OR body LIKE ? OR labels LIKE ? OR uid IN (SELECT note_uid FROM attachments WHERE ocr LIKE ?))",
+            arrayOf(if (archived) "1" else "0", like, like, like, like), "modified_at DESC")
     }
 
     fun trashed(): List<Note> = query("deleted_at>0", emptyArray(), "deleted_at DESC")
@@ -229,8 +236,8 @@ class NoteStore(
 
     // ---- attachments -------------------------------------------------------------------------
 
-    private fun attachmentsWhere(where: String, args: Array<String>): List<Attachment> =
-        readableDatabase.rawQuery("SELECT $ACOLS FROM attachments WHERE $where ORDER BY created_at, rowid", args).use { c ->
+    private fun attachmentsWhere(where: String, args: Array<String>, limit: Int = 0): List<Attachment> =
+        readableDatabase.rawQuery("SELECT $ACOLS FROM attachments WHERE $where ORDER BY created_at, rowid" + if (limit > 0) " LIMIT $limit" else "", args).use { c ->
             generateSequence {
                 if (c.moveToNext()) Attachment(c.getString(0), c.getString(1), AttachmentKind.of(c.getInt(2)), c.getLong(3), c.getLong(4), c.getString(5), c.getString(6)) else null
             }.toList()
@@ -243,11 +250,45 @@ class NoteStore(
     fun addAttachment(a: Attachment) {
         insertAttachment(writableDatabase, a)
         touch(a.noteUid)
+        PhotoText.schedule(appContext)
     }
 
     private fun insertAttachment(db: SQLiteDatabase, a: Attachment) =
         db.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at, name, mime) VALUES(?,?,?,?,?,?,?)",
             arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt, a.name, a.mime))
+
+    // ---- text read from photos (local only, never synced: each device reads its own copies) -----------
+
+    private fun ocrOf(db: SQLiteDatabase, noteUid: String): Map<String, String> =
+        db.rawQuery("SELECT uid, ocr FROM attachments WHERE note_uid=? AND ocr IS NOT NULL", arrayOf(noteUid)).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(0) to c.getString(1) else null }.toMap()
+        }
+
+    /** Photos, pictures and PDFs whose text hasn't been read yet, oldest first. */
+    fun photosToRead(limit: Int, except: Collection<String> = emptyList()): List<Attachment> =
+        attachmentsWhere("ocr IS NULL AND (kind=${AttachmentKind.IMAGE.code} OR (kind=${AttachmentKind.FILE.code} AND (mime LIKE 'image/%' OR mime='application/pdf')))" +
+            (if (except.isEmpty()) "" else " AND uid NOT IN (" + except.joinToString(",") { "?" } + ")"), except.toTypedArray(), limit)
+
+    /** How many photos/PDFs have been read, out of how many. */
+    fun photoTextProgress(): Pair<Int, Int> = readableDatabase.rawQuery(
+        "SELECT SUM(ocr IS NOT NULL), COUNT(*) FROM attachments WHERE kind=${AttachmentKind.IMAGE.code} OR (kind=${AttachmentKind.FILE.code} AND (mime LIKE 'image/%' OR mime='application/pdf'))", null
+    ).use { c -> if (c.moveToFirst()) c.getInt(0) to c.getInt(1) else 0 to 0 }
+
+    /** Stores what was read ("" when there was no text), so the photo isn't read again. */
+    fun setPhotoText(attachmentUid: String, text: String) {
+        writableDatabase.execSQL("UPDATE attachments SET ocr=? WHERE uid=?", arrayOf(text, attachmentUid))
+    }
+
+    /** For notes whose photos contain [query]: note uid to a short excerpt around the first match. */
+    fun photoTextMatches(query: String): Map<String, String> {
+        val q = query.trim()
+        if (q.isEmpty()) return emptyMap()
+        return readableDatabase.rawQuery("SELECT note_uid, ocr FROM attachments WHERE ocr LIKE ?", arrayOf("%$q%")).use { c ->
+            val out = LinkedHashMap<String, String>()
+            while (c.moveToNext()) out.getOrPut(c.getString(0)) { PhotoText.excerpt(c.getString(1), q) }
+            out
+        }
+    }
 
     fun removeAttachment(a: Attachment) {
         writableDatabase.execSQL("DELETE FROM attachments WHERE uid=?", arrayOf(a.uid))
@@ -308,10 +349,12 @@ class NoteStore(
                 val id = if (cur == null) db.insert("notes", null, v) else { db.update("notes", v, "uid=?", arrayOf(n.uid)); cur.id }
                 upserted += n.copy(id = id)
                 upsertAttachments[n.uid]?.let { fresh ->
+                    val read = ocrOf(db, n.uid)      // text already read from these photos survives the rewrite
                     val keep = fresh.map { it.uid }.toSet()
                     attachmentsWhere("note_uid=?", arrayOf(n.uid)).filter { it.uid !in keep }.forEach { staleFiles += it }
                     db.execSQL("DELETE FROM attachments WHERE note_uid=?", arrayOf(n.uid))
                     fresh.forEach { insertAttachment(db, it) }
+                    read.forEach { (u, t) -> db.execSQL("UPDATE attachments SET ocr=? WHERE uid=?", arrayOf(t, u)) }
                 }
             }
             for (uid in deleteUids) {
@@ -328,6 +371,7 @@ class NoteStore(
         } finally { db.endTransaction() }
         staleFiles.forEach { storage.file(it).delete() }
         notifyChanged(syncSoon = false)
+        if (upsertAttachments.isNotEmpty()) PhotoText.schedule(appContext)
         return Applied(upserted, removed)
     }
 

@@ -78,6 +78,10 @@ object Prefs {
     fun addTranslateRecent(c: Context, lang: String) =
         p(c).edit().putString("translateRecent", (listOf(lang) + translateRecent(c)).distinct().take(3).joinToString(",")).apply()
 
+    /** Search text in photos: off until the person turns it on (it needs a one-time model download). */
+    fun photoText(c: Context) = p(c).getBoolean("photoText", false)
+    fun setPhotoText(c: Context, v: Boolean) = p(c).edit().putBoolean("photoText", v).apply()
+
     /** Labels created but not on any note yet (on notes, labels live with the note). */
     fun extraLabels(c: Context): List<String> = Labels.decode(p(c).getString("extraLabels", ""))
     fun addExtraLabel(c: Context, name: String) = p(c).edit().putString("extraLabels", Labels.encode(extraLabels(c) + name)).apply()
@@ -90,7 +94,7 @@ object Prefs {
         val extra = extraLabels(c).mapNotNull { if (Labels.same(it, from)) to else it }
         p(c).edit().putString("extraLabels", Labels.encode(extra)).apply()
         setSavedFilters(c, savedFilters(c).map { f -> if (f.label != null && Labels.same(f.label, from)) f.copy(label = to) else f }
-            .filter { it.query.isNotBlank() || it.color != null || it.label != null })
+            .filter { it.query.isNotBlank() || it.color != null || it.label != null || it.type != null })
     }
 
     fun backupFolder(c: Context) = p(c).getString("backupFolder", "").orEmpty()
