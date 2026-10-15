@@ -63,7 +63,7 @@ Effort: S ≈ a day, M ≈ several days, L ≈ a week or more.
 | 7 | **Quick Settings tile + long-press app shortcuts** (new note / list / voice / scan) | The pattern quick-capture apps use [R] | S |
 | 8 | **Interactive checklist widget** (tick items on the home screen), quick-add row, pin-one-note widget | Widgets are where list apps live day to day [E] | M |
 | 9 | **Receive more from other apps**: images, PDFs, files, not just text — **done in v0.14** | We only accepted shared text [E] | S |
-| 10 | **Voice dictation / transcription** of voice notes — **done in v0.15** (platform on-device recogniser; online only if allowed) | Basic ML Kit speech works on most Android 12+ devices; Alpha [P] | M |
+| 10 | **Voice dictation / transcription** of voice notes — **done in v0.15–0.21** (dictation: platform on-device recogniser, online only if allowed; transcripts: ML Kit speech recognition; both confirmed on a TECNO KL6) | Basic ML Kit speech works on most Android 12+ devices; Alpha [P] | M |
 
 ### C. Find anything
 | # | Feature | Why | Effort |
