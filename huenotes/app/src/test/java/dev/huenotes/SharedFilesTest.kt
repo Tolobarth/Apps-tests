@@ -253,6 +253,8 @@ class SharedFilesTest {
         val path = app.getDatabasePath(name).also { it.parentFile!!.mkdirs() }
         SQLiteDatabase.openOrCreateDatabase(path, null).use { db ->
             NoteStore(app, "unused-${System.nanoTime()}.db").onCreate(db)          // current schema…
+            db.execSQL("DROP TABLE notes"); db.execSQL("CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, checklist INTEGER NOT NULL, color INTEGER NOT NULL, archived INTEGER NOT NULL, reminder_at INTEGER NOT NULL, modified_at INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER NOT NULL DEFAULT 0, uid TEXT NOT NULL DEFAULT '', sync_at INTEGER NOT NULL DEFAULT 0)")   // …notes as at v6 (labels came in v8)
+            db.execSQL("CREATE UNIQUE INDEX notes_uid ON notes(uid)")
             db.execSQL("DROP TABLE attachments")                                   // …with the v6 attachments table
             db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)")
             db.execSQL("INSERT INTO attachments VALUES('a1','n1',2,1500,7)")

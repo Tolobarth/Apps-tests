@@ -58,6 +58,7 @@ class NoteAdapter(
         val content: View = v.findViewById(R.id.content)
         val audio: TextView = v.findViewById(R.id.audio)
         val files: TextView = v.findViewById(R.id.files)
+        val labels: TextView = v.findViewById(R.id.labels)
         val link: TextView = v.findViewById(R.id.link)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
@@ -120,6 +121,8 @@ class NoteAdapter(
             h.files.text = files.singleOrNull()?.name?.ifBlank { null } ?: c.resources.getQuantityString(R.plurals.card_files, files.size, files.size)
             h.files.visibility = View.VISIBLE
         } else h.files.visibility = View.GONE
+        h.labels.text = n.labels.joinToString(" · ")
+        h.labels.visibility = if (n.labels.isEmpty()) View.GONE else View.VISIBLE
         if (items.any { it.text.isNotBlank() }) {
             val (total, done) = Checklist.counts(items)
             h.progress.text = c.getString(R.string.checklist_progress, done, total)
@@ -131,7 +134,7 @@ class NoteAdapter(
             else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(d)
             h.reminder.visibility = View.VISIBLE
         } else h.reminder.visibility = View.GONE
-        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.files, h.reminder).any { it.visibility == View.VISIBLE }
+        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.files, h.labels, h.reminder).any { it.visibility == View.VISIBLE }
         h.content.visibility = if (anyText) View.VISIBLE else View.GONE
     }
 

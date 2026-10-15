@@ -17,6 +17,8 @@ data class Note(
     val uid: String = java.util.UUID.randomUUID().toString(),
     /** Last time anything about the note changed, including pin/archive/trash. Drives sync conflict resolution. */
     val updatedAt: Long = System.currentTimeMillis(),
+    /** Label names, in the order they were added (see [Labels]). */
+    val labels: List<String> = emptyList(),
 ) {
     val isEmpty get() = title.isBlank() && body.isBlank()
 

@@ -87,13 +87,16 @@ object SyncEngine {
 /** JSON wire format of the synced file. */
 object SyncDoc {
     /** 3 = attachment entries may be received files; written only when one exists so older devices keep syncing until then. */
-    private const val FORMAT = 3
+    /** 4 = notes may carry labels. Raised only when needed, so older devices keep syncing until then; an older device
+     *  would otherwise drop labels when it uploads a note. */
+    private const val FORMAT = 4
 
-    fun toJson(s: Snapshot): String = JSONObject().put("app", "huenotes").put("format", if (AttachmentJson.hasFiles(s.attachments)) FORMAT else 2)
+    fun toJson(s: Snapshot): String = JSONObject().put("app", "huenotes").put("format", when { s.notes.any { it.labels.isNotEmpty() } -> FORMAT; AttachmentJson.hasFiles(s.attachments) -> 3; else -> 2 })
         .put("notes", JSONArray(s.notes.map { n ->
             JSONObject().put("uid", n.uid).put("title", n.title).put("body", n.body).put("checklist", n.checklist)
                 .put("color", n.color).put("archived", n.archived).put("pinned", n.pinned).put("reminderAt", n.reminderAt)
                 .put("modifiedAt", n.modifiedAt).put("createdAt", n.createdAt).put("updatedAt", n.updatedAt).put("deletedAt", n.deletedAt)
+                .apply { if (n.labels.isNotEmpty()) put("labels", Labels.toJson(n.labels)) }
                 .put("attachments", JSONArray(s.attachments[n.uid].orEmpty().map { AttachmentJson.toJson(it) }))
         }))
         .put("tombstones", JSONArray(s.tombstones.map { (k, v) -> JSONObject().put("uid", k).put("at", v) }))
@@ -116,7 +119,7 @@ object SyncDoc {
                     title = o.optString("title"), body = o.optString("body"), checklist = o.optBoolean("checklist"),
                     color = o.optInt("color", Note.COLORS[0]), archived = o.optBoolean("archived"), pinned = o.optBoolean("pinned"),
                     reminderAt = o.optLong("reminderAt"), modifiedAt = o.optLong("modifiedAt"), createdAt = o.optLong("createdAt"),
-                    deletedAt = o.optLong("deletedAt"), uid = uid, updatedAt = o.optLong("updatedAt"),
+                    deletedAt = o.optLong("deletedAt"), uid = uid, updatedAt = o.optLong("updatedAt"), labels = Labels.fromJson(o),
                 )
             }
         }

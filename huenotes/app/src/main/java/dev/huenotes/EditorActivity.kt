@@ -49,6 +49,7 @@ class EditorActivity : GatedActivity() {
     private lateinit var toolbar: MaterialToolbar
     private lateinit var attachBox: LinearLayout
     private lateinit var linkChip: Chip
+    private lateinit var labelChips: com.google.android.material.chip.ChipGroup
     private var pendingSave: Pair<Attachment, String>? = null
     private val saveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         val (a, name) = pendingSave ?: return@registerForActivityResult
@@ -114,6 +115,7 @@ class EditorActivity : GatedActivity() {
             }
         toolbar.menu.add(0, 4, 4, R.string.action_history).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         toolbar.menu.add(0, 5, 5, R.string.action_translate).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        toolbar.menu.add(0, 6, 3, R.string.labels_title).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         toolbar.setOnMenuItemClickListener {
             when (it.itemId) {
                 0 -> { note = note.copy(pinned = !note.pinned); applyColor() }
@@ -122,6 +124,7 @@ class EditorActivity : GatedActivity() {
                 3 -> confirmDelete()
                 4 -> showHistory()
                 5 -> startTranslation()
+                6 -> pickLabels()
             }
             true
         }
@@ -132,6 +135,9 @@ class EditorActivity : GatedActivity() {
         attachBox = findViewById(R.id.attachments)
         linkChip = findViewById(R.id.linkChip)
         linkChip.setOnClickListener { Links.linkOf(current().body)?.let { Links.open(this, it) } }
+        labelChips = findViewById(R.id.labelChips)
+        if (note.id == 0L) intent.getStringExtra("label")?.let { note = note.copy(labels = listOf(it)) }   // new note from a label view
+        renderLabels()
         attachments.addAll(store.attachmentsFor(note.uid))
         renderAttachments()
         findViewById<View>(R.id.imageButton).setOnClickListener { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
@@ -606,6 +612,30 @@ class EditorActivity : GatedActivity() {
         val b = MaterialAlertDialogBuilder(this).setMessage(if (any) R.string.speech_unavailable else R.string.speech_unavailable_none)
         if (any) b.setPositiveButton(R.string.speech_open_settings) { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
         b.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    // ---- labels ------------------------------------------------------------------------------
+
+    private fun pickLabels() = LabelDialogs.pick(this, store, note.labels) { setLabels(it) }
+
+    private fun setLabels(l: List<String>) {
+        note = note.copy(labels = Labels.normalize(l))
+        if (note.id != 0L) store.setLabels(note.id, note.labels)
+        renderLabels()
+    }
+
+    /** The note's labels as chips under the title: tap to change them, × to take one off. */
+    private fun renderLabels() {
+        labelChips.removeAllViews()
+        note.labels.forEach { name ->
+            labelChips.addView(Chip(this).apply {
+                text = name; setChipIconResource(R.drawable.ic_label); isChipIconVisible = true
+                isCloseIconVisible = true; closeIconContentDescription = getString(R.string.labels_remove, name)
+                setOnClickListener { pickLabels() }
+                setOnCloseIconClickListener { setLabels(Labels.remove(note.labels, name)) }
+            })
+        }
+        labelChips.visibility = if (note.labels.isEmpty()) View.GONE else View.VISIBLE
     }
 
     // ---- translation -------------------------------------------------------------------------

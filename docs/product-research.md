@@ -40,7 +40,7 @@ the first four only run on a listed set of recent flagship phones, only while th
 ## 3. HueNotes today
 
 Colour notes · text/checklists with sub-items · pins · archive · trash (30 days) · search · sort/grid/list · one-time reminders · calendar day view · 2 widgets ·
-password screen-lock · photos, drawings, voice notes, received files (PDFs etc.) · dictation and voice-note transcripts · share/save attachments · links section · Google Drive sync (needs one-time setup) · JSON backup + daily snapshots ·
+password screen-lock · photos, drawings, voice notes, received files (PDFs etc.) · dictation and voice-note transcripts · translation · labels and saved filters · share/save attachments · links section · Google Drive sync (needs one-time setup) · JSON backup + daily snapshots ·
 5 languages · dark mode · no ads.
 
 ## 4. Recommended features, ranked
@@ -68,7 +68,7 @@ Effort: S ≈ a day, M ≈ several days, L ≈ a week or more.
 ### C. Find anything
 | # | Feature | Why | Effort |
 |---|---|---|---|
-| 11 | **Labels/tags + saved filters** (colour stays) | Colour alone doesn't scale past a few dozen notes; every rival has labels/folders [R] | M |
+| 11 | **Labels/tags + saved filters** (colour stays) — **done in v0.22** | Colour alone doesn't scale past a few dozen notes; every rival has labels/folders [R] | M |
 | 12 | **Search inside photos (OCR) and scans** + type filters (images, audio, lists, links) | "Search missing written content" is 11% [R]; Keep has "grab image text" [R] | M |
 | 13 | **Document scanner** (ML Kit) → image + searchable text | Offline, tiny, no camera permission needed by the app [P] | S |
 | 14 | **Scale test and speed**: list/query off the main thread, full-text index, 10k-note test | 10% of complaints are slowness at 1,000+ notes; our list loads everything on the main thread [R/E] | M |

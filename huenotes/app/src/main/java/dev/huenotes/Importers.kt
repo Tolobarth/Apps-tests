@@ -45,6 +45,7 @@ object Importers {
             color = Note.COLORS[KEEP_COLORS[o.optString("color").uppercase()] ?: 0],
             archived = o.optBoolean("isArchived"), pinned = o.optBoolean("isPinned"),
             modifiedAt = if (modified > 0) modified else now, createdAt = if (created > 0) created else (if (modified > 0) modified else now),
+            labels = o.optJSONArray("labels")?.let { a -> Labels.normalize((0 until a.length()).map { a.optJSONObject(it)?.optString("name").orEmpty() }) }.orEmpty(),
         )
         return Parsed(note, files)
     }

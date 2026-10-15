@@ -10,7 +10,7 @@ class NoteStore(
     context: Context,
     name: String = "huenotes.db",
     val storage: AttachmentStorage = AttachmentStorage.of(context),
-) : SQLiteOpenHelper(context.applicationContext, name, null, 7) {
+) : SQLiteOpenHelper(context.applicationContext, name, null, 8) {
     /** Clock for version spacing; tests replace it. */
     var clock: () -> Long = System::currentTimeMillis
     private val appContext = context.applicationContext
@@ -21,7 +21,8 @@ class NoteStore(
                body TEXT NOT NULL, checklist INTEGER NOT NULL, color INTEGER NOT NULL,
                archived INTEGER NOT NULL, reminder_at INTEGER NOT NULL, modified_at INTEGER NOT NULL,
                created_at INTEGER NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0,
-               deleted_at INTEGER NOT NULL DEFAULT 0, uid TEXT NOT NULL DEFAULT '', sync_at INTEGER NOT NULL DEFAULT 0)"""
+               deleted_at INTEGER NOT NULL DEFAULT 0, uid TEXT NOT NULL DEFAULT '', sync_at INTEGER NOT NULL DEFAULT 0,
+               labels TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL("CREATE UNIQUE INDEX notes_uid ON notes(uid)")
         db.execSQL("CREATE TABLE tombstones(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
@@ -57,6 +58,7 @@ class NoteStore(
         if (o < 4) createAttachments(db)
         if (o < 5) createVersions(db)
         if (o < 6) db.execSQL("CREATE TABLE sync_base(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
+        if (o < 8) db.execSQL("ALTER TABLE notes ADD COLUMN labels TEXT NOT NULL DEFAULT ''")
         if (o in 4..6) {      // attachments created by v4-v6 lack the file name and type columns
             db.execSQL("ALTER TABLE attachments ADD COLUMN name TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE attachments ADD COLUMN mime TEXT NOT NULL DEFAULT ''")
@@ -65,7 +67,7 @@ class NoteStore(
 
     private fun Cursor.toNote() = Note(
         getLong(0), getString(1), getString(2), getInt(3) == 1, getInt(4), getInt(5) == 1,
-        getLong(6), getLong(7), getLong(8), getInt(9) == 1, getLong(10), getString(11), getLong(12)
+        getLong(6), getLong(7), getLong(8), getInt(9) == 1, getLong(10), getString(11), getLong(12), Labels.decode(getString(13))
     )
 
     private fun query(where: String, args: Array<String>, order: String): List<Note> =
@@ -75,8 +77,8 @@ class NoteStore(
     /** Live notes (not in the trash), newest edit first; sorting for display is done by [Sorter]. */
     fun list(archived: Boolean, query: String = ""): List<Note> {
         val like = "%${query.trim()}%"
-        return query("archived=? AND deleted_at=0 AND (title LIKE ? OR body LIKE ?)",
-            arrayOf(if (archived) "1" else "0", like, like), "modified_at DESC")
+        return query("archived=? AND deleted_at=0 AND (title LIKE ? OR body LIKE ? OR labels LIKE ?)",
+            arrayOf(if (archived) "1" else "0", like, like, like), "modified_at DESC")
     }
 
     fun trashed(): List<Note> = query("deleted_at>0", emptyArray(), "deleted_at DESC")
@@ -96,6 +98,7 @@ class NoteStore(
             put("title", n.title); put("body", n.body); put("checklist", if (n.checklist) 1 else 0)
             put("color", n.color); put("archived", if (n.archived) 1 else 0); put("pinned", if (n.pinned) 1 else 0)
             put("reminder_at", n.reminderAt); put("modified_at", if (touch) System.currentTimeMillis() else n.modifiedAt)
+            put("labels", Labels.encode(n.labels))
             put("sync_at", System.currentTimeMillis())
         }
         val id = if (n.id == 0L) {
@@ -168,6 +171,29 @@ class NoteStore(
     }
 
     fun setArchived(id: Long, v: Boolean) = flag(id, "archived", if (v) 1 else 0)
+
+    /** Changing labels counts as a change for sync, but not as an edit ("last edited" stays). */
+    fun setLabels(id: Long, labels: List<String>) {
+        writableDatabase.update("notes", ContentValues().apply { put("labels", Labels.encode(labels)); put("sync_at", System.currentTimeMillis()) }, "id=?", arrayOf(id.toString()))
+        notifyChanged()
+    }
+
+    /** Renames (or, with [to] null, removes) a label on every note that has it, trash included. Returns how many notes changed. */
+    fun relabel(from: String, to: String?): Int {
+        val affected = query("labels != ''", emptyArray(), "id").filter { Labels.has(it, from) }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val now = System.currentTimeMillis()
+            for (n in affected) {
+                val next = if (to == null) Labels.remove(n.labels, from) else Labels.rename(n.labels, from, to)
+                db.update("notes", ContentValues().apply { put("labels", Labels.encode(next)); put("sync_at", now) }, "id=?", arrayOf(n.id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+        if (affected.isNotEmpty()) notifyChanged()
+        return affected.size
+    }
     fun setPinned(id: Long, v: Boolean) = flag(id, "pinned", if (v) 1 else 0)
     fun trash(id: Long) = flag(id, "deleted_at", System.currentTimeMillis())
     fun restore(id: Long) = flag(id, "deleted_at", 0)
@@ -277,7 +303,7 @@ class NoteStore(
                     put("title", n.title); put("body", n.body); put("checklist", if (n.checklist) 1 else 0)
                     put("color", n.color); put("archived", if (n.archived) 1 else 0); put("pinned", if (n.pinned) 1 else 0)
                     put("reminder_at", n.reminderAt); put("modified_at", n.modifiedAt); put("created_at", n.createdAt)
-                    put("deleted_at", n.deletedAt); put("sync_at", n.updatedAt); put("uid", n.uid)
+                    put("deleted_at", n.deletedAt); put("sync_at", n.updatedAt); put("uid", n.uid); put("labels", Labels.encode(n.labels))
                 }
                 val id = if (cur == null) db.insert("notes", null, v) else { db.update("notes", v, "uid=?", arrayOf(n.uid)); cur.id }
                 upserted += n.copy(id = id)
@@ -312,6 +338,6 @@ class NoteStore(
         const val MAX_VERSIONS = 50
         const val TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000
         private const val ACOLS = "uid,note_uid,kind,duration,created_at,name,mime"
-        private const val COLS = "id,title,body,checklist,color,archived,reminder_at,modified_at,created_at,pinned,deleted_at,uid,sync_at"
+        private const val COLS = "id,title,body,checklist,color,archived,reminder_at,modified_at,created_at,pinned,deleted_at,uid,sync_at,labels"
     }
 }

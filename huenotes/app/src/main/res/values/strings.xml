@@ -356,4 +356,17 @@
     <!-- v0.21 -->
     <string name="transcribe_model_msg">To transcribe recordings, Google’s speech model for %1$s needs to be downloaded once. After that transcription runs on the phone and your recordings stay on it.</string>
     <string name="transcribe_model_failed">Google’s speech model for %1$s couldn’t be downloaded. Check the connection and try again.</string>
+
+    <!-- Labels and saved filters (v0.22) -->
+    <string name="labels_title">Labels</string>
+    <string name="labels_done">Done</string>
+    <string name="labels_new">New label</string>
+    <string name="labels_none">No labels yet. Create one with New label.</string>
+    <string name="labels_rename">Rename</string>
+    <string name="labels_delete">Delete label</string>
+    <string name="labels_delete_confirm">Delete the label “%1$s”? It is taken off every note; the notes themselves stay.</string>
+    <string name="labels_remove">Remove label %1$s</string>
+    <string name="filter_save">Save filter</string>
+    <string name="filter_default_name">My filter</string>
+    <string name="filter_delete">Delete filter</string>
 </resources>

@@ -356,4 +356,17 @@
     <!-- v0.21 -->
     <string name="transcribe_model_msg">Para transcribir grabaciones, hay que descargar una vez el modelo de voz de Google para %1$s. Después la transcripción se hace en el teléfono y tus grabaciones no salen de él.</string>
     <string name="transcribe_model_failed">No se pudo descargar el modelo de voz de Google para %1$s. Revisa la conexión e inténtalo de nuevo.</string>
+
+    <!-- Labels and saved filters (v0.22) -->
+    <string name="labels_title">Etiquetas</string>
+    <string name="labels_done">Listo</string>
+    <string name="labels_new">Nueva etiqueta</string>
+    <string name="labels_none">Aún no hay etiquetas. Crea una con Nueva etiqueta.</string>
+    <string name="labels_rename">Cambiar nombre</string>
+    <string name="labels_delete">Borrar etiqueta</string>
+    <string name="labels_delete_confirm">¿Borrar la etiqueta «%1$s»? Se quita de todas las notas; las notas se conservan.</string>
+    <string name="labels_remove">Quitar la etiqueta %1$s</string>
+    <string name="filter_save">Guardar filtro</string>
+    <string name="filter_default_name">Mi filtro</string>
+    <string name="filter_delete">Borrar filtro</string>
 </resources>

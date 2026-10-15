@@ -9,6 +9,7 @@ object MarkdownExport {
     fun markdown(n: Note, atts: List<Attachment>): String {
         val sb = StringBuilder()
         if (n.title.isNotBlank()) sb.append("# ").append(n.title).append("\n\n")
+        if (n.labels.isNotEmpty()) sb.append("Labels: ").append(n.labels.joinToString(", ")).append("\n\n")
         if (n.checklist) Checklist.parse(n.body).forEach { sb.append("  ".repeat(it.level)).append(if (it.done) "- [x] " else "- [ ] ").append(it.text).append('\n') }
         else sb.append(n.body.trimEnd()).append('\n')
         if (atts.isNotEmpty()) {

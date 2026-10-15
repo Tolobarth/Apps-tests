@@ -78,6 +78,21 @@ object Prefs {
     fun addTranslateRecent(c: Context, lang: String) =
         p(c).edit().putString("translateRecent", (listOf(lang) + translateRecent(c)).distinct().take(3).joinToString(",")).apply()
 
+    /** Labels created but not on any note yet (on notes, labels live with the note). */
+    fun extraLabels(c: Context): List<String> = Labels.decode(p(c).getString("extraLabels", ""))
+    fun addExtraLabel(c: Context, name: String) = p(c).edit().putString("extraLabels", Labels.encode(extraLabels(c) + name)).apply()
+
+    fun savedFilters(c: Context): List<SavedFilter> = SavedFilter.listFromJson(p(c).getString("savedFilters", "[]") ?: "[]")
+    fun setSavedFilters(c: Context, l: List<SavedFilter>) = p(c).edit().putString("savedFilters", SavedFilter.listToJson(l)).apply()
+
+    /** A label was renamed ([to]) or deleted (null): keep the extra list and saved filters in step. */
+    fun renameLabel(c: Context, from: String, to: String?) {
+        val extra = extraLabels(c).mapNotNull { if (Labels.same(it, from)) to else it }
+        p(c).edit().putString("extraLabels", Labels.encode(extra)).apply()
+        setSavedFilters(c, savedFilters(c).map { f -> if (f.label != null && Labels.same(f.label, from)) f.copy(label = to) else f }
+            .filter { it.query.isNotBlank() || it.color != null || it.label != null })
+    }
+
     fun backupFolder(c: Context) = p(c).getString("backupFolder", "").orEmpty()
     fun backupFolderName(c: Context) = p(c).getString("backupFolderName", "").orEmpty()
     fun setBackupFolder(c: Context, uri: String, name: String) = p(c).edit().putString("backupFolder", uri).putString("backupFolderName", name).apply()

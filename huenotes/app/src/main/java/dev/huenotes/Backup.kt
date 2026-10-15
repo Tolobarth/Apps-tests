@@ -7,17 +7,19 @@ import org.json.JSONObject
 
 /**
  * JSON backup of all live notes (including archived). Format version 3 adds per-note attachment lists (the files travel in a
- * zip, see [BackupZip]); version 4 is written only when a note has a received file (PDF, document…). Older files still import.
+ * zip, see [BackupZip]); version 4 is written only when a note has a received file (PDF, document…), version 5 only when a
+ * note has labels. Older files still import.
  */
 object Backup {
-    private const val VERSION = 4
+    private const val VERSION = 5
 
     fun toJson(notes: List<Note>, attachments: Map<String, List<Attachment>> = emptyMap()): String = JSONObject()
-        .put("app", "huenotes").put("version", if (AttachmentJson.hasFiles(attachments)) VERSION else 3)
+        .put("app", "huenotes").put("version", when { notes.any { it.labels.isNotEmpty() } -> VERSION; AttachmentJson.hasFiles(attachments) -> 4; else -> 3 })
         .put("notes", JSONArray(notes.map {
             JSONObject().put("title", it.title).put("body", it.body).put("checklist", it.checklist)
                 .put("color", it.color).put("archived", it.archived).put("pinned", it.pinned)
                 .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt).put("uid", it.uid)
+                .apply { if (it.labels.isNotEmpty()) put("labels", Labels.toJson(it.labels)) }
                 .apply {
                     val a = attachments[it.uid].orEmpty()
                     if (a.isNotEmpty()) put("attachments", JSONArray(a.map { x -> AttachmentJson.toJson(x) }))
@@ -51,7 +53,7 @@ object Backup {
                 color = o.optInt("color", Note.COLORS[0]), archived = o.optBoolean("archived"),
                 pinned = o.optBoolean("pinned"), reminderAt = o.optLong("reminderAt"),
                 modifiedAt = modified, createdAt = o.optLong("createdAt", modified),
-                uid = o.optString("uid").ifBlank { java.util.UUID.randomUUID().toString() }
+                uid = o.optString("uid").ifBlank { java.util.UUID.randomUUID().toString() }, labels = Labels.fromJson(o),
             )
         }
     }

@@ -356,4 +356,17 @@
     <!-- v0.21 -->
     <string name="transcribe_model_msg">Zum Transkribieren von Aufnahmen muss Googles Sprachmodell für %1$s einmal heruntergeladen werden. Danach läuft die Transkription auf dem Telefon und deine Aufnahmen bleiben dort.</string>
     <string name="transcribe_model_failed">Googles Sprachmodell für %1$s konnte nicht heruntergeladen werden. Prüfe die Verbindung und versuche es noch einmal.</string>
+
+    <!-- Labels and saved filters (v0.22) -->
+    <string name="labels_title">Labels</string>
+    <string name="labels_done">Fertig</string>
+    <string name="labels_new">Neues Label</string>
+    <string name="labels_none">Noch keine Labels. Lege eines mit „Neues Label“ an.</string>
+    <string name="labels_rename">Umbenennen</string>
+    <string name="labels_delete">Label löschen</string>
+    <string name="labels_delete_confirm">Label „%1$s“ löschen? Es wird von allen Notizen entfernt; die Notizen bleiben.</string>
+    <string name="labels_remove">Label %1$s entfernen</string>
+    <string name="filter_save">Filter speichern</string>
+    <string name="filter_default_name">Mein Filter</string>
+    <string name="filter_delete">Filter löschen</string>
 </resources>

@@ -356,4 +356,17 @@
     <!-- v0.21 -->
     <string name="transcribe_model_msg">Para transcrever gravações, o modelo de voz do Google para %1$s precisa ser baixado uma vez. Depois a transcrição acontece no celular e suas gravações ficam nele.</string>
     <string name="transcribe_model_failed">Não foi possível baixar o modelo de voz do Google para %1$s. Verifique a conexão e tente de novo.</string>
+
+    <!-- Labels and saved filters (v0.22) -->
+    <string name="labels_title">Marcadores</string>
+    <string name="labels_done">Concluir</string>
+    <string name="labels_new">Novo marcador</string>
+    <string name="labels_none">Nenhum marcador ainda. Crie um com Novo marcador.</string>
+    <string name="labels_rename">Renomear</string>
+    <string name="labels_delete">Excluir marcador</string>
+    <string name="labels_delete_confirm">Excluir o marcador “%1$s”? Ele sai de todas as notas; as notas continuam.</string>
+    <string name="labels_remove">Remover o marcador %1$s</string>
+    <string name="filter_save">Salvar filtro</string>
+    <string name="filter_default_name">Meu filtro</string>
+    <string name="filter_delete">Excluir filtro</string>
 </resources>

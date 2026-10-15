@@ -356,4 +356,17 @@
     <!-- v0.21 -->
     <string name="transcribe_model_msg">Pour transcrire les enregistrements, le modèle vocal Google pour le %1$s doit être téléchargé une fois. Ensuite, la transcription se fait sur le téléphone et vos enregistrements y restent.</string>
     <string name="transcribe_model_failed">Le modèle vocal Google pour le %1$s n’a pas pu être téléchargé. Vérifiez la connexion et réessayez.</string>
+
+    <!-- Labels and saved filters (v0.22) -->
+    <string name="labels_title">Libellés</string>
+    <string name="labels_done">OK</string>
+    <string name="labels_new">Nouveau libellé</string>
+    <string name="labels_none">Aucun libellé pour l’instant. Créez-en un avec Nouveau libellé.</string>
+    <string name="labels_rename">Renommer</string>
+    <string name="labels_delete">Supprimer le libellé</string>
+    <string name="labels_delete_confirm">Supprimer le libellé « %1$s » ? Il est retiré de toutes les notes ; les notes restent.</string>
+    <string name="labels_remove">Retirer le libellé %1$s</string>
+    <string name="filter_save">Enregistrer le filtre</string>
+    <string name="filter_default_name">Mon filtre</string>
+    <string name="filter_delete">Supprimer le filtre</string>
 </resources>

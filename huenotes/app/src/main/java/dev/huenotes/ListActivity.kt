@@ -33,6 +33,7 @@ class ListActivity : GatedActivity() {
     private lateinit var nav: BottomNavigationView
     private var showArchive = false
     private var colorFilter: Int? = null
+    private var labelFilter: String? = null
     private var linksOnly = false
 
     override fun onCreate(s: Bundle?) {
@@ -117,7 +118,8 @@ class ListActivity : GatedActivity() {
 
     /** [start] makes a new note begin with that action: "image", "drawing", "audio", "dictate", "list" or "text". */
     private fun openEditor(id: Long, start: String? = null) =
-        startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("start", start))
+        startActivity(Intent(this, EditorActivity::class.java).putExtra("id", id).putExtra("start", start)
+            .apply { if (id == 0L) labelFilter?.let { putExtra("label", it) } })       // a new note gets the label being viewed
 
     private val dialItems = listOf(R.id.dialText to "text", R.id.dialList to "list", R.id.dialLink to "link", R.id.dialDictate to "dictate", R.id.dialAudio to "audio", R.id.dialDrawing to "drawing", R.id.dialImage to "image")
     private var dialOpen = false
@@ -165,16 +167,17 @@ class ListActivity : GatedActivity() {
         // The links section is built from all notes of this tab, so every link appears by itself.
         val everyNote = Sorter.sort(store.list(showArchive), Prefs.sort(this))
         val allLinks = LinkIndex.entries(everyNote)
-        val searching = search.text.isNotBlank() || colorFilter != null
+        val searching = search.text.isNotBlank() || colorFilter != null || labelFilter != null
+        val byLabel: (Note) -> Boolean = { n -> labelFilter.let { it == null || Labels.has(n, it) } }
         val visibleCount: Int
         if (linksOnly) {
-            val rows = LinkIndex.filter(allLinks.filter { colorFilter == null || it.note.color == colorFilter }, search.text.toString())
+            val rows = LinkIndex.filter(allLinks.filter { (colorFilter == null || it.note.color == colorFilter) && byLabel(it.note) }, search.text.toString())
             if (recycler.adapter !== linkAdapter) recycler.adapter = linkAdapter
             linkAdapter.entries = rows
             visibleCount = rows.size
         } else {
             val all = store.list(showArchive, search.text.toString())
-            val byColour = colorFilter?.let { f -> all.filter { it.color == f } } ?: all
+            val byColour = (colorFilter?.let { f -> all.filter { it.color == f } } ?: all).filter(byLabel)
             val shown = Sorter.sort(byColour, Prefs.sort(this))
             if (recycler.adapter !== adapter) recycler.adapter = adapter
             adapter.submit(shown, groupPinned = !showArchive,
@@ -191,17 +194,67 @@ class ListActivity : GatedActivity() {
             if (noLinksAtAll) R.string.empty_links_body else if (searching) R.string.empty_search_body else if (showArchive) R.string.empty_archive_body else R.string.empty_notes_body)
 
         filterRow.removeAllViews()
+        val saved = Prefs.savedFilters(this)
+        val current = SavedFilter("", search.text.toString().trim(), colorFilter, labelFilter)
+        saved.forEach { f ->
+            filterRow.addView(chip(f.name, R.drawable.ic_search, checked = f.copy(name = "") == current,
+                onClick = { if (f.copy(name = "") == current) applyFilter(SavedFilter("")) else applyFilter(f) },
+                onLong = { manageSavedFilter(f) }))
+        }
         filterRow.addView(Chip(this).apply {
             text = getString(R.string.filter_links_count, allLinks.size); isCheckable = true; isChecked = linksOnly
             setChipIconResource(R.drawable.ic_link); isChipIconVisible = true; isCheckedIconVisible = false
             setOnClickListener { linksOnly = !linksOnly; refresh() }
         })
+        LabelDialogs.known(this, store).forEach { name ->
+            filterRow.addView(chip(name, R.drawable.ic_label, checked = labelFilter?.let { Labels.same(it, name) } == true,
+                onClick = { labelFilter = if (labelFilter?.let { Labels.same(it, name) } == true) null else name; refresh() },
+                onLong = { LabelDialogs.manage(this, store, name) { if (labelFilter?.let { Labels.same(it, name) } == true) labelFilter = null; refresh() } }))
+        }
+        val active = current.query.isNotEmpty() || current.color != null || current.label != null
+        if (active && saved.none { it.copy(name = "") == current }) {
+            filterRow.addView(chip(getString(R.string.filter_save), R.drawable.ic_add, checked = false, onClick = { saveFilter(current) }, onLong = null))
+        }
         filterRow.addView(Palette.swatch(this, null, colorFilter == null, getString(R.string.filter_all_colours)) { colorFilter = null; refresh() })
         Note.COLORS.forEach { c ->
             filterRow.addView(Palette.swatch(this, c, colorFilter == c, getString(R.string.filter_by_colour)) {
                 colorFilter = if (colorFilter == c) null else c; refresh()
             })
         }
+    }
+
+    // ---- labels and saved filters -------------------------------------------------------------
+
+    private fun chip(label: String, icon: Int, checked: Boolean, onClick: () -> Unit, onLong: (() -> Unit)?) = Chip(this).apply {
+        text = label; isCheckable = true; isChecked = checked
+        setChipIconResource(icon); isChipIconVisible = true; isCheckedIconVisible = false
+        setOnClickListener { onClick() }
+        if (onLong != null) setOnLongClickListener { onLong(); true }
+    }
+
+    private fun applyFilter(f: SavedFilter) {
+        colorFilter = f.color; labelFilter = f.label
+        if (search.text.toString() != f.query) search.setText(f.query)       // its watcher refreshes
+        refresh()
+    }
+
+    /** Names the current search/colour/label so it can be brought back with one tap. */
+    private fun saveFilter(f: SavedFilter) {
+        val suggestion = listOfNotNull(f.label, f.query.takeIf { it.isNotEmpty() }?.let { "\u201c$it\u201d" }).joinToString(" · ").ifEmpty { getString(R.string.filter_default_name) }
+        LabelDialogs.ask(this, R.string.filter_save, suggestion.take(Labels.MAX_LENGTH)) { name ->
+            Prefs.setSavedFilters(this, Prefs.savedFilters(this).filterNot { it.name == name } + f.copy(name = name))
+            refresh()
+        }
+    }
+
+    private fun manageSavedFilter(f: SavedFilter) {
+        MaterialAlertDialogBuilder(this).setTitle(f.name)
+            .setItems(arrayOf(getString(R.string.labels_rename), getString(R.string.filter_delete))) { _, which ->
+                val others = Prefs.savedFilters(this).filterNot { it == f }
+                if (which == 0) LabelDialogs.ask(this, R.string.labels_rename, f.name) { name ->
+                    Prefs.setSavedFilters(this, Prefs.savedFilters(this).map { if (it == f) it.copy(name = name) else it }); refresh()
+                } else { Prefs.setSavedFilters(this, others); refresh() }
+            }.show()
     }
 
     // ---- the links section -----------------------------------------------------------------------
@@ -249,13 +302,15 @@ class ListActivity : GatedActivity() {
         pm.menu.add(0, 1, 0, if (n.pinned) R.string.action_unpin else R.string.action_pin)
         pm.menu.add(0, 2, 1, if (n.archived) R.string.action_unarchive else R.string.action_archive)
         pm.menu.add(0, 3, 2, R.string.action_share)
-        pm.menu.add(0, 4, 3, R.string.action_delete)
+        pm.menu.add(0, 5, 3, R.string.labels_title)
+        pm.menu.add(0, 4, 4, R.string.action_delete)
         pm.setOnMenuItemClickListener {
             when (it.itemId) {
                 1 -> { store.setPinned(n.id, !n.pinned); refresh() }
                 2 -> archive(n, !n.archived)
                 3 -> shareNote(this, n, store)
                 4 -> trash(n)
+                5 -> LabelDialogs.pick(this, store, n.labels) { store.setLabels(n.id, it); refresh() }
             }
             true
         }
