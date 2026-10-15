@@ -4,7 +4,7 @@ import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/** Every note as a Markdown file in a zip, with pictures and recordings in `attachments/` linked from the note. */
+/** Every note as a Markdown file in a zip, with pictures, recordings and files in `attachments/` linked from the note. */
 object MarkdownExport {
     fun markdown(n: Note, atts: List<Attachment>): String {
         val sb = StringBuilder()
@@ -15,7 +15,11 @@ object MarkdownExport {
             sb.append('\n')
             atts.forEach { a ->
                 val path = "attachments/" + a.fileName
-                sb.append(if (a.kind == AttachmentKind.AUDIO) "[Audio recording]($path)\n" else "![]($path)\n")
+                sb.append(when (a.kind) {
+                    AttachmentKind.AUDIO -> "[Audio recording]($path)\n"
+                    AttachmentKind.FILE -> "[" + a.name.ifBlank { "File" }.replace("[", "\\[").replace("]", "\\]") + "]($path)\n"
+                    else -> "![]($path)\n"
+                })
             }
         }
         return sb.toString()

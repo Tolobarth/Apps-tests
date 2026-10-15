@@ -6,7 +6,9 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import androidx.exifinterface.media.ExifInterface
 import java.io.File
@@ -21,16 +23,19 @@ object AttachmentFiles {
     private fun open(r: ContentResolver, uri: Uri): InputStream = r.openInputStream(uri) ?: throw IOException("Can't open $uri")
 
     /** Decodes [uri], fixes its EXIF rotation, scales it down, and writes a JPEG to [out]. */
-    fun importImage(r: ContentResolver, uri: Uri, out: File) {
+    fun importImage(r: ContentResolver, uri: Uri, out: File) = importImage({ open(r, uri) }, out)
+
+    /** Same, for any source that can be opened more than once. */
+    fun importImage(open: () -> InputStream, out: File) {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open(r, uri).use { BitmapFactory.decodeStream(it, null, bounds) }
+        open().use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IOException("Not an image")
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_EDGE) sample *= 2
-        var bmp = open(r, uri).use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }
+        var bmp = open().use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }
             ?: throw IOException("Can't decode image")
         val orientation = try {
-            open(r, uri).use { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+            open().use { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
         } catch (_: Exception) { ExifInterface.ORIENTATION_NORMAL }
         bmp = fit(oriented(bmp, orientation), MAX_EDGE)
         if (bmp.hasAlpha()) bmp = onWhite(bmp)
@@ -85,6 +90,32 @@ object AttachmentFiles {
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxEdge) sample *= 2
         return BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })?.also { cache.put(key, it) }
+    }
+
+    /** The first page of a PDF, white background, for cards and the editor; null if it can't be rendered. Cached like [thumb]. */
+    fun pdfPage(file: File, maxEdge: Int): Bitmap? {
+        if (!file.exists()) return null
+        val key = "${file.path}:${file.lastModified()}:pdf:$maxEdge"
+        cache.get(key)?.let { return it }
+        return try {
+            PdfRenderer(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)).use { pdf ->
+                if (pdf.pageCount == 0) return null
+                pdf.openPage(0).use { page ->
+                    val s = maxEdge.toFloat() / maxOf(page.width, page.height)
+                    val bmp = Bitmap.createBitmap(maxOf(1, (page.width * s).toInt()), maxOf(1, (page.height * s).toInt()), Bitmap.Config.ARGB_8888)
+                    bmp.eraseColor(Color.WHITE)
+                    page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    bmp.also { cache.put(key, it) }
+                }
+            }
+        } catch (e: Exception) { null }
+    }
+
+    /** What to show for an attachment on a card or in the editor: the picture, a PDF's first page, or null. */
+    fun preview(storage: AttachmentStorage, a: Attachment, maxEdge: Int): Bitmap? = when {
+        a.kind == AttachmentKind.IMAGE || a.kind == AttachmentKind.DRAWING -> thumb(storage.file(a), maxEdge)
+        a.kind == AttachmentKind.FILE && a.mimeType == "application/pdf" -> pdfPage(storage.file(a), maxEdge)
+        else -> null
     }
 
     fun duration(ms: Long): String {

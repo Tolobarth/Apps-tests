@@ -28,17 +28,23 @@
         <activity android:name=".DrawingActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".TrashActivity" android:exported="false" />
-        <!-- Appears in other apps' Share sheets: saves a shared link (or text) as a note. -->
+        <!-- Appears in other apps' Share sheets: saves a shared link, text, photos, PDFs or other files as a note. -->
         <activity
             android:name=".ShareReceiverActivity"
             android:exported="true"
             android:label="@string/share_target_label"
             android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode|density|locale|layoutDirection"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
         <provider

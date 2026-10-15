@@ -86,16 +86,15 @@ object SyncEngine {
 
 /** JSON wire format of the synced file. */
 object SyncDoc {
-    private const val FORMAT = 2
+    /** 3 = attachment entries may be received files; written only when one exists so older devices keep syncing until then. */
+    private const val FORMAT = 3
 
-    fun toJson(s: Snapshot): String = JSONObject().put("app", "huenotes").put("format", FORMAT)
+    fun toJson(s: Snapshot): String = JSONObject().put("app", "huenotes").put("format", if (AttachmentJson.hasFiles(s.attachments)) FORMAT else 2)
         .put("notes", JSONArray(s.notes.map { n ->
             JSONObject().put("uid", n.uid).put("title", n.title).put("body", n.body).put("checklist", n.checklist)
                 .put("color", n.color).put("archived", n.archived).put("pinned", n.pinned).put("reminderAt", n.reminderAt)
                 .put("modifiedAt", n.modifiedAt).put("createdAt", n.createdAt).put("updatedAt", n.updatedAt).put("deletedAt", n.deletedAt)
-                .put("attachments", JSONArray(s.attachments[n.uid].orEmpty().map {
-                    JSONObject().put("uid", it.uid).put("kind", it.kind.code).put("durationMs", it.durationMs).put("createdAt", it.createdAt)
-                }))
+                .put("attachments", JSONArray(s.attachments[n.uid].orEmpty().map { AttachmentJson.toJson(it) }))
         }))
         .put("tombstones", JSONArray(s.tombstones.map { (k, v) -> JSONObject().put("uid", k).put("at", v) }))
         .toString()
@@ -110,10 +109,7 @@ object SyncDoc {
                 val o = a.getJSONObject(it)
                 val uid = o.getString("uid")
                 o.optJSONArray("attachments")?.let { arr ->
-                    val list = (0 until arr.length()).map { i ->
-                        val x = arr.getJSONObject(i)
-                        Attachment(x.getString("uid"), uid, AttachmentKind.of(x.optInt("kind")), x.optLong("durationMs"), x.optLong("createdAt"))
-                    }
+                    val list = (0 until arr.length()).map { i -> AttachmentJson.fromJson(arr.getJSONObject(i), uid) }
                     if (list.isNotEmpty()) atts[uid] = list
                 }
                 Note(
@@ -166,7 +162,7 @@ object SyncRunner {
         val remoteNames = remoteBlobs.map { it.name }.toHashSet()
         for (a in wanted) {
             val f = store.storage.file(a)
-            if (a.blobName !in remoteNames && f.exists()) remote.uploadBlob(a.blobName, f.readBytes(), a.kind.mime)
+            if (a.blobName !in remoteNames && f.exists()) remote.uploadBlob(a.blobName, f.readBytes(), a.mimeType)
         }
         var pending = 0
         for (a in wanted) {

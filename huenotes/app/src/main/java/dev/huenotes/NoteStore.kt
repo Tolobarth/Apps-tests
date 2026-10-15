@@ -10,7 +10,7 @@ class NoteStore(
     context: Context,
     name: String = "huenotes.db",
     val storage: AttachmentStorage = AttachmentStorage.of(context),
-) : SQLiteOpenHelper(context.applicationContext, name, null, 6) {
+) : SQLiteOpenHelper(context.applicationContext, name, null, 7) {
     /** Clock for version spacing; tests replace it. */
     var clock: () -> Long = System::currentTimeMillis
     private val appContext = context.applicationContext
@@ -36,7 +36,7 @@ class NoteStore(
     }
 
     private fun createAttachments(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE attachments(uid TEXT PRIMARY KEY, note_uid TEXT NOT NULL, kind INTEGER NOT NULL, duration INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', mime TEXT NOT NULL DEFAULT '')")
         db.execSQL("CREATE INDEX attachments_note ON attachments(note_uid)")
     }
 
@@ -57,6 +57,10 @@ class NoteStore(
         if (o < 4) createAttachments(db)
         if (o < 5) createVersions(db)
         if (o < 6) db.execSQL("CREATE TABLE sync_base(uid TEXT PRIMARY KEY, at INTEGER NOT NULL)")
+        if (o in 4..6) {      // attachments created by v4-v6 lack the file name and type columns
+            db.execSQL("ALTER TABLE attachments ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE attachments ADD COLUMN mime TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     private fun Cursor.toNote() = Note(
@@ -199,7 +203,7 @@ class NoteStore(
     private fun attachmentsWhere(where: String, args: Array<String>): List<Attachment> =
         readableDatabase.rawQuery("SELECT $ACOLS FROM attachments WHERE $where ORDER BY created_at, rowid", args).use { c ->
             generateSequence {
-                if (c.moveToNext()) Attachment(c.getString(0), c.getString(1), AttachmentKind.of(c.getInt(2)), c.getLong(3), c.getLong(4)) else null
+                if (c.moveToNext()) Attachment(c.getString(0), c.getString(1), AttachmentKind.of(c.getInt(2)), c.getLong(3), c.getLong(4), c.getString(5), c.getString(6)) else null
             }.toList()
         }
 
@@ -208,10 +212,13 @@ class NoteStore(
 
     /** Adding or removing an attachment counts as a change to its note, so sync picks it up. */
     fun addAttachment(a: Attachment) {
-        writableDatabase.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at) VALUES(?,?,?,?,?)",
-            arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt))
+        insertAttachment(writableDatabase, a)
         touch(a.noteUid)
     }
+
+    private fun insertAttachment(db: SQLiteDatabase, a: Attachment) =
+        db.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at, name, mime) VALUES(?,?,?,?,?,?,?)",
+            arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt, a.name, a.mime))
 
     fun removeAttachment(a: Attachment) {
         writableDatabase.execSQL("DELETE FROM attachments WHERE uid=?", arrayOf(a.uid))
@@ -275,7 +282,7 @@ class NoteStore(
                     val keep = fresh.map { it.uid }.toSet()
                     attachmentsWhere("note_uid=?", arrayOf(n.uid)).filter { it.uid !in keep }.forEach { staleFiles += it }
                     db.execSQL("DELETE FROM attachments WHERE note_uid=?", arrayOf(n.uid))
-                    fresh.forEach { a -> db.execSQL("INSERT OR REPLACE INTO attachments(uid, note_uid, kind, duration, created_at) VALUES(?,?,?,?,?)", arrayOf(a.uid, a.noteUid, a.kind.code, a.durationMs, a.createdAt)) }
+                    fresh.forEach { insertAttachment(db, it) }
                 }
             }
             for (uid in deleteUids) {
@@ -301,7 +308,7 @@ class NoteStore(
         const val VERSION_SPACING_MS = 5L * 60 * 1000
         const val MAX_VERSIONS = 50
         const val TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000
-        private const val ACOLS = "uid,note_uid,kind,duration,created_at"
+        private const val ACOLS = "uid,note_uid,kind,duration,created_at,name,mime"
         private const val COLS = "id,title,body,checklist,color,archived,reminder_at,modified_at,created_at,pinned,deleted_at,uid,sync_at"
     }
 }

@@ -5,21 +5,22 @@ import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** JSON backup of all live notes (including archived). Format version 3 adds per-note attachment lists (the files travel in a zip, see [BackupZip]); older files still import. */
+/**
+ * JSON backup of all live notes (including archived). Format version 3 adds per-note attachment lists (the files travel in a
+ * zip, see [BackupZip]); version 4 is written only when a note has a received file (PDF, document…). Older files still import.
+ */
 object Backup {
-    private const val VERSION = 3
+    private const val VERSION = 4
 
     fun toJson(notes: List<Note>, attachments: Map<String, List<Attachment>> = emptyMap()): String = JSONObject()
-        .put("app", "huenotes").put("version", VERSION)
+        .put("app", "huenotes").put("version", if (AttachmentJson.hasFiles(attachments)) VERSION else 3)
         .put("notes", JSONArray(notes.map {
             JSONObject().put("title", it.title).put("body", it.body).put("checklist", it.checklist)
                 .put("color", it.color).put("archived", it.archived).put("pinned", it.pinned)
                 .put("reminderAt", it.reminderAt).put("modifiedAt", it.modifiedAt).put("createdAt", it.createdAt).put("uid", it.uid)
                 .apply {
                     val a = attachments[it.uid].orEmpty()
-                    if (a.isNotEmpty()) put("attachments", JSONArray(a.map { x ->
-                        JSONObject().put("uid", x.uid).put("kind", x.kind.code).put("durationMs", x.durationMs).put("createdAt", x.createdAt)
-                    }))
+                    if (a.isNotEmpty()) put("attachments", JSONArray(a.map { x -> AttachmentJson.toJson(x) }))
                 }
         })).toString(2)
 
@@ -31,9 +32,7 @@ object Backup {
         val out = LinkedHashMap<String, List<Attachment>>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i); val nu = o.optString("uid"); val at = o.optJSONArray("attachments") ?: continue
-            val list = (0 until at.length()).map { at.getJSONObject(it) }.filter { SAFE_UID.matches(it.optString("uid")) }.map {
-                Attachment(it.getString("uid"), nu, AttachmentKind.of(it.optInt("kind")), it.optLong("durationMs"), it.optLong("createdAt"))
-            }
+            val list = (0 until at.length()).map { at.getJSONObject(it) }.filter { SAFE_UID.matches(it.optString("uid")) }.map { AttachmentJson.fromJson(it, nu) }
             if (list.isNotEmpty()) out[nu] = list
         }
         return out

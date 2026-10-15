@@ -5,7 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
+import androidx.annotation.RequiresApi
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
@@ -21,7 +21,8 @@ object AttachmentExport {
 
     /** A readable file name such as "Weekend trip - Photo - 2026-10-14 15.30.jpg" (receiving apps show this name). */
     fun friendlyName(a: Attachment, noteTitle: String): String {
-        val kind = when (a.kind) { AttachmentKind.AUDIO -> "Voice note"; AttachmentKind.DRAWING -> "Drawing"; AttachmentKind.IMAGE -> "Photo" }
+        if (a.kind == AttachmentKind.FILE) return SharedFiles.cleanName(a.name.ifBlank { "file.${a.ext}" })   // a received file keeps its own name
+        val kind = when (a.kind) { AttachmentKind.AUDIO -> "Voice note"; AttachmentKind.DRAWING -> "Drawing"; else -> "Photo" }
         val title = noteTitle.replace(Regex("[\\\\/:*?\"<>|\\r\\n\\t]"), "_").trim().take(40).trim()
         val stamp = SimpleDateFormat("yyyy-MM-dd HH.mm", Locale.US).format(Date(a.createdAt))
         return listOfNotNull(title.ifBlank { null }, kind, stamp).joinToString(" - ") + "." + a.kind.ext
@@ -63,20 +64,23 @@ object AttachmentExport {
     }
 
     /** Folder shown to the user after a save. */
-    fun folderFor(kind: AttachmentKind) = if (kind == AttachmentKind.AUDIO) "Music/HueNotes" else "Pictures/HueNotes"
+    fun folderFor(kind: AttachmentKind) = when (kind) { AttachmentKind.AUDIO -> "Music/HueNotes"; AttachmentKind.FILE -> "Download/HueNotes"; else -> "Pictures/HueNotes" }
 
     /**
      * Saves into the phone's shared media folders using MediaStore (no storage permission needed on Android 10+).
      * Returns the folder name. Older Android versions use the "create document" picker instead (see [copyToUri]).
      */
-    fun saveToPhone(c: Context, src: File, name: String, kind: AttachmentKind): String {
-        check(Build.VERSION.SDK_INT >= 29) { "MediaStore saving needs Android 10+" }
-        val folder = folderFor(kind)
-        val collection = if (kind == AttachmentKind.AUDIO) MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        else MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    @RequiresApi(29)
+    fun saveToPhone(c: Context, src: File, name: String, a: Attachment): String {
+        val folder = folderFor(a.kind)
+        val collection = when (a.kind) {
+            AttachmentKind.AUDIO -> MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            AttachmentKind.FILE -> MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            else -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        }
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, kind.mime)
+            put(MediaStore.MediaColumns.MIME_TYPE, a.mimeType)
             put(MediaStore.MediaColumns.RELATIVE_PATH, folder)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }

@@ -40,7 +40,7 @@ the first four only run on a listed set of recent flagship phones, only while th
 ## 3. HueNotes today
 
 Colour notes · text/checklists with sub-items · pins · archive · trash (30 days) · search · sort/grid/list · one-time reminders · calendar day view · 2 widgets ·
-password screen-lock · photos, drawings, voice notes · share/save attachments · links section · Google Drive sync (needs one-time setup) · JSON backup + daily snapshots ·
+password screen-lock · photos, drawings, voice notes, received files (PDFs etc.) · share/save attachments · links section · Google Drive sync (needs one-time setup) · JSON backup + daily snapshots ·
 5 languages · dark mode · no ads.
 
 ## 4. Recommended features, ranked
@@ -62,7 +62,7 @@ Effort: S ≈ a day, M ≈ several days, L ≈ a week or more.
 | 6 | **Default notes app role** (lock-screen quick note + floating window) | Official Android path to the fastest capture [P] | M |
 | 7 | **Quick Settings tile + long-press app shortcuts** (new note / list / voice / scan) | The pattern quick-capture apps use [R] | S |
 | 8 | **Interactive checklist widget** (tick items on the home screen), quick-add row, pin-one-note widget | Widgets are where list apps live day to day [E] | M |
-| 9 | **Receive more from other apps**: images, PDFs, files, not just text | We only accept shared text [E] | S |
+| 9 | **Receive more from other apps**: images, PDFs, files, not just text — **done in v0.14** | We only accepted shared text [E] | S |
 | 10 | **Voice dictation / transcription** of voice notes | Basic ML Kit speech works on most Android 12+ devices; Alpha [P] | M |
 
 ### C. Find anything

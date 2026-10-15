@@ -57,6 +57,7 @@ class NoteAdapter(
         val thumb: android.widget.ImageView = v.findViewById(R.id.thumb)
         val content: View = v.findViewById(R.id.content)
         val audio: TextView = v.findViewById(R.id.audio)
+        val files: TextView = v.findViewById(R.id.files)
         val link: TextView = v.findViewById(R.id.link)
         val title: TextView = v.findViewById(R.id.title)
         val body: TextView = v.findViewById(R.id.body)
@@ -105,14 +106,20 @@ class NoteAdapter(
         h.body.visibility = if (preview.isEmpty()) View.GONE else View.VISIBLE
         val atts = attachments[n.uid].orEmpty()
         if (n.title.isBlank() && preview.isEmpty() && atts.isEmpty() && linkUrl == null) { h.title.text = c.getString(R.string.empty_note); h.title.visibility = View.VISIBLE }
-        val visual = atts.firstOrNull { it.kind != AttachmentKind.AUDIO }
-        val bmp = visual?.let { v -> storage?.let { AttachmentFiles.thumb(it.file(v), 480) } }
+        val visual = atts.firstOrNull { it.kind == AttachmentKind.IMAGE || it.kind == AttachmentKind.DRAWING }
+            ?: atts.firstOrNull { it.kind == AttachmentKind.FILE && it.mimeType == "application/pdf" }
+        val bmp = visual?.let { v -> storage?.let { AttachmentFiles.preview(it, v, 480) } }
         if (bmp != null) { h.thumb.setImageBitmap(bmp); h.thumb.visibility = View.VISIBLE } else { h.thumb.setImageDrawable(null); h.thumb.visibility = View.GONE }
         val audios = atts.filter { it.kind == AttachmentKind.AUDIO }
         if (audios.isNotEmpty()) {
             h.audio.text = AttachmentFiles.duration(audios.sumOf { it.durationMs }) + if (audios.size > 1) " (×${audios.size})" else ""
             h.audio.visibility = View.VISIBLE
         } else h.audio.visibility = View.GONE
+        val files = atts.filter { it.kind == AttachmentKind.FILE }
+        if (files.isNotEmpty()) {
+            h.files.text = files.singleOrNull()?.name?.ifBlank { null } ?: c.resources.getQuantityString(R.plurals.card_files, files.size, files.size)
+            h.files.visibility = View.VISIBLE
+        } else h.files.visibility = View.GONE
         if (items.any { it.text.isNotBlank() }) {
             val (total, done) = Checklist.counts(items)
             h.progress.text = c.getString(R.string.checklist_progress, done, total)
@@ -124,7 +131,7 @@ class NoteAdapter(
             else DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(d)
             h.reminder.visibility = View.VISIBLE
         } else h.reminder.visibility = View.GONE
-        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.reminder).any { it.visibility == View.VISIBLE }
+        val anyText = listOf(h.title, h.body, h.link, h.progress, h.audio, h.files, h.reminder).any { it.visibility == View.VISIBLE }
         h.content.visibility = if (anyText) View.VISIBLE else View.GONE
     }
 

@@ -152,3 +152,11 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - Settings → Backup → "Import from other apps": Google Keep (Takeout `.zip` or loose note `.json`: text, checklists, colour, pin, archive, dates, photos, audio; Keep's trash is skipped) and `.txt`/`.md` files (a `# Heading` is the title, otherwise the file name; all-checkbox files become checklists with sub-items). Re-importing adds nothing twice.
 - "Export as Markdown": a `.zip` with one `.md` per note and `attachments/`.
 - ColorNote's own backup is a proprietary encrypted format and is not supported; use its plain-text export.
+
+### v0.14 — Receive photos, PDFs and files from other apps
+- **Share → Save to HueNotes** now accepts photos, PDFs, documents and any other file, one or many at once (`SEND` and `SEND_MULTIPLE`). Everything shared together becomes one note: shared text is its body, the subject (or a lone file's name) its title.
+- Photos are stored like camera photos (scaled to 1280 px, EXIF rotation fixed); GIFs, SVGs, pictures Android can't decode and all other files are kept byte for byte under their own name, up to 25 MB each. A single shared `.txt`/`.md` file becomes the note's text, like Import.
+- In the editor a file shows its name, type and size (a PDF also shows its first page); tap to open it in another app, ⋮ for Open, Share, Save to phone (`Download/HueNotes`) and Remove. Cards show the file name or "3 files".
+- Files sync, back up (zip), restore and export to Markdown like other attachments. Only `content://` addresses from other apps are read (`file://` and HueNotes' own are refused), and names are cleaned before use.
+- DB version 7 (file name and type columns). The sync file and JSON backup move to format 3 / version 4 **only once a note has a file**, so older HueNotes installs report "from a newer version" instead of showing a broken photo: update every device.
+- Not yet tried on a device: the share sheet itself, opening files in other apps, and PDF page previews (Robolectric has no PDF engine).

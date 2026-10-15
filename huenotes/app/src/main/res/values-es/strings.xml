@@ -263,4 +263,16 @@
         <item quantity="one">%1$d nota añadida</item>
         <item quantity="other">%1$d notas añadidas</item>
     </plurals>
+
+    <!-- Files received from other apps (v0.14) -->
+    <string name="share_failed">No se pudo añadir a HueNotes</string>
+    <string name="share_some_failed">Guardado, pero algunos archivos no se pudieron añadir (más de 25 MB o ilegibles)</string>
+    <string name="file_untitled">Archivo</string>
+    <string name="file_not_here">Aún no está en este teléfono</string>
+    <string name="file_no_app">Ninguna app de este teléfono puede abrir este archivo</string>
+    <string name="file_open">Abrir</string>
+    <plurals name="card_files">
+        <item quantity="one">%1$d archivo</item>
+        <item quantity="other">%1$d archivos</item>
+    </plurals>
 </resources>

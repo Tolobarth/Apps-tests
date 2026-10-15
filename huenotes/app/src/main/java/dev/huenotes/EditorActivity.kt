@@ -281,7 +281,9 @@ class EditorActivity : GatedActivity() {
 
     private fun renderAttachments() {
         attachBox.removeAllViews()
-        attachments.forEach { a -> attachBox.addView(if (a.kind == AttachmentKind.AUDIO) audioView(a) else imageView(a)) }
+        attachments.forEach { a ->
+            attachBox.addView(when (a.kind) { AttachmentKind.AUDIO -> audioView(a); AttachmentKind.FILE -> fileView(a); else -> imageView(a) })
+        }
     }
 
     private fun imageView(a: Attachment): View {
@@ -314,11 +316,35 @@ class EditorActivity : GatedActivity() {
         return v
     }
 
+    /** A received file (PDF, document…): name, type and size; a PDF also shows its first page. Tap opens it in another app. */
+    private fun fileView(a: Attachment): View {
+        val v = LayoutInflater.from(this).inflate(R.layout.item_attach_file, attachBox, false)
+        val file = store.storage.file(a)
+        v.findViewById<TextView>(R.id.name).text = a.name.ifBlank { getString(R.string.file_untitled) }
+        val type = a.ext.takeIf { it != "bin" }?.uppercase()
+        v.findViewById<TextView>(R.id.info).text = if (file.exists()) listOfNotNull(type, android.text.format.Formatter.formatShortFileSize(this, file.length())).joinToString(" · ")
+            else getString(R.string.file_not_here)
+        AttachmentFiles.preview(store.storage, a, 1024)?.let { bmp ->
+            v.findViewById<android.widget.ImageView>(R.id.preview).apply { setImageBitmap(bmp); visibility = View.VISIBLE }
+        }
+        v.setOnClickListener { openFile(a) }
+        v.findViewById<View>(R.id.more).setOnClickListener { showAttachmentMenu(it, a) }
+        return v
+    }
+
+    private fun openFile(a: Attachment) {
+        val uri = AttachmentExport.stage(this, store, a, titleEdit.text.toString())
+        if (uri == null) { Toast.makeText(this, R.string.file_not_here, Toast.LENGTH_SHORT).show(); return }
+        val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, a.mimeType).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try { startActivity(view) } catch (e: android.content.ActivityNotFoundException) { Toast.makeText(this, R.string.file_no_app, Toast.LENGTH_LONG).show() }
+    }
+
     private fun showAttachmentMenu(anchor: View, a: Attachment) {
         android.widget.PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, R.string.action_share); menu.add(0, 2, 1, R.string.attach_save); menu.add(0, 3, 2, R.string.attach_remove)
+            if (a.kind == AttachmentKind.FILE) menu.add(0, 4, 0, R.string.file_open)
+            menu.add(0, 1, 1, R.string.action_share); menu.add(0, 2, 2, R.string.attach_save); menu.add(0, 3, 3, R.string.attach_remove)
             setOnMenuItemClickListener {
-                when (it.itemId) { 1 -> shareAttachment(a); 2 -> saveAttachment(a); 3 -> confirmRemove(a) }
+                when (it.itemId) { 1 -> shareAttachment(a); 2 -> saveAttachment(a); 3 -> confirmRemove(a); 4 -> openFile(a) }
                 true
             }
             show()
@@ -328,16 +354,16 @@ class EditorActivity : GatedActivity() {
     private fun shareAttachment(a: Attachment) {
         val uri = AttachmentExport.stage(this, store, a, titleEdit.text.toString())
         if (uri == null) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show(); return }
-        startActivity(Intent.createChooser(AttachmentExport.shareIntent(listOf(uri to a.kind.mime), null, null), getString(R.string.share_chooser)))
+        startActivity(Intent.createChooser(AttachmentExport.shareIntent(listOf(uri to a.mimeType), null, null), getString(R.string.share_chooser)))
     }
 
-    /** Android 10+: straight into Pictures/HueNotes or Music/HueNotes. Older Android: the person picks the place. */
+    /** Android 10+: straight into Pictures/HueNotes, Music/HueNotes or Download/HueNotes. Older Android: the person picks the place. */
     private fun saveAttachment(a: Attachment) {
         val file = store.storage.file(a)
         if (!file.exists()) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show(); return }
         val name = AttachmentExport.friendlyName(a, titleEdit.text.toString())
         if (android.os.Build.VERSION.SDK_INT < 29) { pendingSave = a to name; saveLauncher.launch(name); return }
-        try { Toast.makeText(this, getString(R.string.attach_saved, AttachmentExport.saveToPhone(this, file, name, a.kind)), Toast.LENGTH_LONG).show() }
+        try { Toast.makeText(this, getString(R.string.attach_saved, AttachmentExport.saveToPhone(this, file, name, a)), Toast.LENGTH_LONG).show() }
         catch (e: Exception) { Toast.makeText(this, R.string.attach_save_failed, Toast.LENGTH_SHORT).show() }
     }
 
