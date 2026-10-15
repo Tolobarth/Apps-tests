@@ -384,4 +384,8 @@
     <string name="type_voice">Voz</string>
     <string name="type_lists">Listas</string>
     <string name="type_files">Archivos</string>
+
+    <!-- v0.24 -->
+    <string name="dictate_no_answer">El servicio de voz del teléfono no respondió, así que no se pudo oír nada. Inténtalo de nuevo; si sigue pasando, reinicia el teléfono. Puedes compartir los detalles para ayudar a corregirlo.</string>
+    <string name="dictate_nothing">No se oyó nada. Habla cuando aparezca «Escuchando…» y luego toca Listo. Si sigue pasando, puedes compartir los detalles para ayudar a corregirlo.</string>
 </resources>

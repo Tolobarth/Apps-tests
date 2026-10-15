@@ -384,4 +384,8 @@
     <string name="type_voice">Sprache</string>
     <string name="type_lists">Listen</string>
     <string name="type_files">Dateien</string>
+
+    <!-- v0.24 -->
+    <string name="dictate_no_answer">Der Sprachdienst des Telefons hat nicht reagiert, daher konnte nichts gehört werden. Versuche es noch einmal; wenn es weiter passiert, starte das Telefon neu. Du kannst die Details teilen, damit das behoben werden kann.</string>
+    <string name="dictate_nothing">Es wurde nichts gehört. Sprich, sobald „Höre zu…“ erscheint, und tippe dann auf Fertig. Wenn es weiter passiert, kannst du die Details teilen.</string>
 </resources>

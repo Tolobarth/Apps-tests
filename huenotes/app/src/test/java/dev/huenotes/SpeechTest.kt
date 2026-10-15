@@ -158,6 +158,24 @@ class SpeechTest {
         assertEquals(R.string.speech_err_language, Speech.errorText(SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE))
     }
 
+    @Test fun aSpeechServiceThatNeverAnswersEndsWithALog() {
+        var ended: Pair<String, Int?>? = null
+        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
+        d.start(); latest()
+        ShadowLooper.idleMainLooper(Dictation.NO_ANSWER_MS + 100, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals("" to Dictation.NO_ANSWER, ended)
+        assertTrue(d.details, d.details.contains("no answer from the speech service"))
+    }
+
+    @Test fun aServiceThatAnswersIsNotCutOff() {
+        var ended: Pair<String, Int?>? = null
+        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
+        d.start(); latest().triggerOnReadyForSpeech(Bundle())
+        ShadowLooper.idleMainLooper(Dictation.NO_ANSWER_MS + 100, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertNull(ended)
+        assertTrue(d.details, d.details.contains("ready"))
+    }
+
     @Test fun cancelKeepsWhatWasRecognisedAndEndsOnce() {
         val ends = ArrayList<String>()
         val d = Dictation(app, { _, _ -> }, { t, _ -> ends += t })
@@ -294,6 +312,21 @@ class SpeechTest {
         assertEquals("Bread. Milk and eggs", body.text.toString())
         c.pause()
         assertEquals("Bread. Milk and eggs", NoteStore(app).get(id)!!.body)
+    }
+
+    @Test fun editorSaysSoWhenNothingWasHeard() {
+        app.deleteDatabase("huenotes.db"); Lock.clear(app)
+        shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        val id = NoteStore(app).save(Note(title = "T", body = "Keep"))
+        val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
+        c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
+        speechInstalled()
+        latest().triggerOnReadyForSpeech(Bundle())
+        (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).performClick()   // Done
+        latest().triggerOnError(SpeechRecognizer.ERROR_NO_MATCH); ShadowLooper.idleMainLooper()
+        val d = ShadowDialog.getLatestDialog() as AlertDialog
+        assertEquals(app.getString(R.string.dictate_nothing), d.findViewById<android.widget.TextView>(android.R.id.message)!!.text.toString())
+        assertEquals("Keep", c.get().findViewById<EditText>(R.id.bodyEdit).text.toString())
     }
 
     @Test fun editorCancelThrowsAwayTheDictation() {

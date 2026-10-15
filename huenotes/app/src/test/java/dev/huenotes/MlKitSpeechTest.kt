@@ -102,6 +102,18 @@ class MlKitSpeechTest {
         assertEquals("Un deux trois" to null, ended)
     }
 
+    @Test fun googlesSpeechAppIsReleasedEvenIfItNeverConfirmsTheStop() {
+        val stuck = object : MlKitSpeech.Engine by fake {
+            override suspend fun stop() { kotlinx.coroutines.awaitCancellation() }
+        }
+        ended = null
+        val t = MlKitTranscriber(File("x.m4a"), stuck, { _, _ -> }, { x, e -> ended = x to e },
+            decode = { _, out, _, _ -> out.write(ByteArray(Pcm.BYTES_PER_SEC)); 0L }, speed = 1e6)
+        t.start(); settle()
+        t.cancel(); settle(3000)
+        assertTrue("closed despite a stop that never returns", fake.closed)
+    }
+
     @Test fun silenceAfterTheLastAudioEndsWithWhatWasHeard() {
         ended = null
         val t = transcriber(); t.start(); settle()

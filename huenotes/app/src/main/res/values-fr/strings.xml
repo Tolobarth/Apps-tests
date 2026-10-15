@@ -384,4 +384,8 @@
     <string name="type_voice">Voix</string>
     <string name="type_lists">Listes</string>
     <string name="type_files">Fichiers</string>
+
+    <!-- v0.24 -->
+    <string name="dictate_no_answer">Le service vocal du téléphone n’a pas répondu, rien n’a donc pu être entendu. Réessayez ; si cela continue, redémarrez le téléphone. Vous pouvez partager les détails pour aider à corriger ce problème.</string>
+    <string name="dictate_nothing">Rien n’a été entendu. Parlez une fois « Écoute… » affiché, puis touchez Terminé. Si cela continue, vous pouvez partager les détails pour aider à corriger ce problème.</string>
 </resources>

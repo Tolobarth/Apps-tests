@@ -112,28 +112,42 @@ class Dictation(
     private val parts = ArrayList<String>()
     private var stopping = false
     private var ended = false
+    private var events = 0
     private val main = Handler(Looper.getMainLooper())
+    private val log = ArrayList<String>()
+    private val t0 = android.os.SystemClock.elapsedRealtime()
     val text get() = DictationText.join(parts)
+    /** What happened, for a shared report: recogniser events and timings, no words. */
+    val details get() = log.joinToString("\n")
+
+    private fun note(s: String) { if (log.size < 200) log += "+%.1fs %s".format((android.os.SystemClock.elapsedRealtime() - t0) / 1000.0, s) }
+    private fun ev(name: String) { events++; if (events <= 30 || !name.startsWith("rms")) note(name) }
 
     internal val listener = object : RecognitionListener {
-        override fun onPartialResults(b: Bundle?) { onUpdate(text, Speech.best(b)) }
+        override fun onPartialResults(b: Bundle?) { ev("partial ${Speech.best(b).length} chars"); onUpdate(text, Speech.best(b)) }
         override fun onResults(b: Bundle?) {
+            ev("results ${Speech.best(b).length} chars")
             Speech.best(b).takeIf { it.isNotEmpty() }?.let { parts += it }
             onUpdate(text, "")
             if (stopping) finish(null) else main.post { if (!ended) listen() }    // keep going until the person stops
         }
-        override fun onError(error: Int) = finish(if (Speech.isSilence(error) && (parts.isNotEmpty() || stopping)) null else error)
-        override fun onReadyForSpeech(p: Bundle?) = Unit
-        override fun onBeginningOfSpeech() = Unit
-        override fun onRmsChanged(v: Float) = Unit
-        override fun onBufferReceived(b: ByteArray?) = Unit
-        override fun onEndOfSpeech() = Unit
-        override fun onEvent(t: Int, p: Bundle?) = Unit
+        override fun onError(error: Int) { ev("error $error"); finish(if (Speech.isSilence(error) && (parts.isNotEmpty() || stopping)) null else error) }
+        override fun onReadyForSpeech(p: Bundle?) = ev("ready")
+        override fun onBeginningOfSpeech() = ev("speech")
+        override fun onRmsChanged(v: Float) = ev("rms")
+        override fun onBufferReceived(b: ByteArray?) = ev("buffer")
+        override fun onEndOfSpeech() = ev("end-of-speech")
+        override fun onEvent(t: Int, p: Bundle?) = ev("event $t")
     }
 
-    fun start() { recognizer.setRecognitionListener(listener); listen() }
+    fun start() {
+        note("start $language")
+        recognizer.setRecognitionListener(listener); listen()
+        // A speech service that never answers at all (not even "ready") would leave "Speak now" up forever.
+        main.postDelayed({ if (!ended && events == 0) { note("no answer from the speech service"); recognizer.cancel(); finish(NO_ANSWER) } }, NO_ANSWER_MS)
+    }
 
-    private fun listen() = recognizer.startListening(Speech.intent(c, language))
+    private fun listen() { note("listen"); recognizer.startListening(Speech.intent(c, language)) }
 
     /** Stops listening; what is being said right now is still recognised and kept. */
     fun stop() {
@@ -148,11 +162,17 @@ class Dictation(
     private fun finish(error: Int?) {
         if (ended) return
         ended = true
+        note("finished" + (error?.let { " with $it" } ?: "") + ", ${parts.size} phrases")
         recognizer.destroy()
         onEnd(text, error)
     }
 
-    companion object { const val STOP_GRACE_MS = 4000L }
+    companion object {
+        const val STOP_GRACE_MS = 4000L
+        const val NO_ANSWER_MS = 8000L
+        /** The speech service gave no sign of life at all. */
+        const val NO_ANSWER = -3
+    }
 }
 
 /** Turning a recording into the 16 kHz mono 16-bit PCM the recogniser reads. */

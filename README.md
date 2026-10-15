@@ -215,3 +215,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - **Type chips** in the list: Photos, Voice, Lists, Files (next to Links). They combine with search, colour and labels, and saved filters remember them.
 - Database upgrades now skip columns that already exist, so a repeated or interrupted upgrade can't fail.
 - Not yet tried on a device: ML Kit text recognition itself (tests use a fake recogniser).
+
+### v0.24 — Dictation that never just sits there
+- Reported on the TECNO: dictation showed "Speak now", the person spoke, and nothing happened.
+- Likely cause fixed: after a transcription, HueNotes waited for ML Kit to confirm its stop before releasing Google's speech app; if that confirmation never came, the session could stay open and keep the speech app busy. It is now released after at most 2 s whatever happens.
+- Dictation keeps a log (recogniser events and timings, no words). If the speech service gives no sign of life within 8 s, dictation stops and says so; if it ends with nothing heard, a message says so instead of closing silently. Both offer **Share details**.

@@ -341,7 +341,8 @@ class EditorActivity : GatedActivity() {
         val cursor = target.selectionEnd.takeIf { it >= 0 } ?: target.text.length
         val shown = speechStatusView(getString(R.string.dictate_hint))
         var discard = false
-        val d = Dictation(this, { text, hearing ->
+        lateinit var d: Dictation
+        d = Dictation(this, { text, hearing ->
             shown.text = DictationText.join(listOf(text, hearing)).ifEmpty { getString(R.string.dictate_hint) }
         }, { text, error ->
             speechDialog?.dismiss(); speechDialog = null; dictation = null; CrashLog.doing(this, "edit")
@@ -349,7 +350,12 @@ class EditorActivity : GatedActivity() {
                 val (t, at) = DictationText.insert(target.text.toString(), cursor.coerceAtMost(target.text.length), text)
                 target.setText(t); target.setSelection(at.coerceAtMost(t.length))
             }
-            if (error != null && !discard) showSpeechError(error)
+            when {
+                discard -> Unit
+                // Nothing came out: say so instead of silently closing, with the details to share.
+                text.isBlank() && (error == null || error == Dictation.NO_ANSWER || Speech.isSilence(error)) -> dictationGotNothing(error, d.details)
+                error != null -> showSpeechError(error)
+            }
         }, tag, Speech.create(this, online))
         dictation = d
         speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.dictate_title).setView(shown)
@@ -497,6 +503,16 @@ class EditorActivity : GatedActivity() {
     }
 
     private var lastTranscriber: Transcriber? = null
+
+    private fun dictationGotNothing(error: Int?, details: String) {
+        val report = CrashLog.header(this) + "Dictation log\n" + details
+        MaterialAlertDialogBuilder(this)
+            .setMessage(if (error == Dictation.NO_ANSWER) R.string.dictate_no_answer else R.string.dictate_nothing)
+            .setPositiveButton(android.R.string.ok, null)
+            .setNeutralButton(R.string.transcribe_share_details) { _, _ ->
+                startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
+            }.show()
+    }
 
     /** The phone's speech service didn't take the recording: say so, and let the person share what happened. */
     private fun transcriptNotAccepted(details: String) {

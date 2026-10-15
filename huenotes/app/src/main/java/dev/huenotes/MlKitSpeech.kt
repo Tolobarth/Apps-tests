@@ -210,7 +210,9 @@ class MlKitTranscriber(
         note("finished" + (error?.let { " with $it" } ?: ""))
         job?.cancel()
         runCatching { read?.close() }; read = null
-        scope.launch { engine.stop(); engine.close() }
+        // Always release Google's speech app, even if it never confirms the stop: a session left open can keep it busy
+        // and stop dictation from hearing anything afterwards.
+        scope.launch { try { kotlinx.coroutines.withTimeoutOrNull(2000) { engine.stop() } } finally { engine.close() } }
         onEnd(text, error)
     }
 

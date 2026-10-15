@@ -23,8 +23,8 @@ android {
         applicationId = "dev.huenotes"
         minSdk = 26          // Android 8+: ML Kit speech needs it
         targetSdk = 36
-        versionCode = 23
-        versionName = "0.23"
+        versionCode = 24
+        versionName = "0.24"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
