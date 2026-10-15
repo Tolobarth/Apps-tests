@@ -220,3 +220,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - Reported on the TECNO: dictation showed "Speak now", the person spoke, and nothing happened.
 - Likely cause fixed: after a transcription, HueNotes waited for ML Kit to confirm its stop before releasing Google's speech app; if that confirmation never came, the session could stay open and keep the speech app busy. It is now released after at most 2 s whatever happens.
 - Dictation keeps a log (recogniser events and timings, no words). If the speech service gives no sign of life within 8 s, dictation stops and says so; if it ends with nothing heard, a message says so instead of closing silently. Both offer **Share details**.
+
+### v0.25 — Dictation: silent microphone detection, language with region
+- A device log showed the speech service starting ("ready"), then only 3 sound-level reports in 19 s and no speech detected: the microphone stopped delivering sound right after start. Dictation now watches the sound-level reports; if they stop for 4 s it starts over once with a fresh recogniser, and if it happens again it stops with a clear message (another app using the microphone, or the speech service stuck: restart the phone) and **Share details**.
+- Speech now always asks for a language with its region ("fr" → fr-FR, as transcription does), also when the app's or phone's language has none.
+- The dictation log records what the language check returned.

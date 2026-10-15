@@ -388,4 +388,5 @@
     <!-- v0.24 -->
     <string name="dictate_no_answer">O serviço de voz do celular não respondeu, então nada pôde ser ouvido. Tente de novo; se continuar, reinicie o celular. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
     <string name="dictate_nothing">Nada foi ouvido. Fale quando “Ouvindo…” aparecer e toque em Concluir. Se continuar, você pode compartilhar os detalhes para ajudar a corrigir.</string>
+    <string name="dictate_stalled">O microfone parou de enviar som ao serviço de voz, mesmo depois de recomeçar. Outro app pode estar usando o microfone, ou o serviço de voz travou: reiniciar o celular costuma resolver. Você pode compartilhar os detalhes para ajudar a corrigir.</string>
 </resources>

@@ -65,12 +65,10 @@ object MlKitSpeech {
         c.packageManager.getPackageInfo("com.google.android.tts", 0); true
     } catch (e: PackageManager.NameNotFoundException) { false }
 
-    private val REGION = mapOf("fr" to "FR", "en" to "US", "de" to "DE", "es" to "ES", "pt" to "BR", "it" to "IT")
-
     /** ML Kit wants a language with its region ("fr" → fr-FR). */
     fun locale(tag: String): Locale {
         val l = Locale.forLanguageTag(tag)
-        return if (l.country.isNotEmpty()) l else Locale(l.language, REGION[l.language] ?: "")
+        return if (l.country.isNotEmpty()) l else Locale(l.language, Speech.REGION[l.language] ?: "")
     }
 
     private class Real(language: Locale) : Engine {

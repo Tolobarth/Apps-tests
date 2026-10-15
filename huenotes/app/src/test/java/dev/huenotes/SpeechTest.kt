@@ -108,7 +108,8 @@ class SpeechTest {
         val br = java.util.Locale.forLanguageTag("pt-BR")
         assertEquals("pt-BR", Speech.language(app, br))
         Prefs.setLanguage(app, "pt"); assertEquals("pt-BR", Speech.language(app, br))
-        Prefs.setLanguage(app, "de"); assertEquals("de", Speech.language(app, br))
+        Prefs.setLanguage(app, "de"); assertEquals("a bare language gets its usual region", "de-DE", Speech.language(app, br))
+        Prefs.setLanguage(app, ""); assertEquals("fr-FR", Speech.language(app, java.util.Locale.forLanguageTag("fr")))
     }
 
     // ---- dictation -----------------------------------------------------------------------------
@@ -165,6 +166,30 @@ class SpeechTest {
         ShadowLooper.idleMainLooper(Dictation.NO_ANSWER_MS + 100, java.util.concurrent.TimeUnit.MILLISECONDS)
         assertEquals("" to Dictation.NO_ANSWER, ended)
         assertTrue(d.details, d.details.contains("no answer from the speech service"))
+    }
+
+    @Test fun aMicrophoneThatGoesSilentIsRestartedOnceThenReported() {
+        var ended: Pair<String, Int?>? = null
+        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
+        d.start()
+        val first = latest(); first.triggerOnReadyForSpeech(Bundle()); first.triggerOnRmsChanged(1f)
+        ShadowLooper.idleMainLooper(Dictation.STALL_MS + 1500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertNull(ended)
+        val second = latest()
+        assertNotSame("a fresh recogniser", first, second)
+        second.triggerOnReadyForSpeech(Bundle())
+        ShadowLooper.idleMainLooper(Dictation.STALL_MS + 1500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals("" to Dictation.AUDIO_STALLED, ended)
+        assertTrue(d.details, d.details.contains("starting again") && d.details.contains("no sound again"))
+    }
+
+    @Test fun steadySoundIsNotMistakenForAStall() {
+        var ended: Pair<String, Int?>? = null
+        val d = Dictation(app, { _, _ -> }, { t, e -> ended = t to e })
+        d.start(); val r = latest(); r.triggerOnReadyForSpeech(Bundle())
+        repeat(20) { r.triggerOnRmsChanged(2f); ShadowLooper.idleMainLooper(500, java.util.concurrent.TimeUnit.MILLISECONDS) }
+        assertNull(ended)
+        assertFalse(d.details.contains("starting again"))
     }
 
     @Test fun aServiceThatAnswersIsNotCutOff() {

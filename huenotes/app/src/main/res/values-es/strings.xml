@@ -388,4 +388,5 @@
     <!-- v0.24 -->
     <string name="dictate_no_answer">El servicio de voz del teléfono no respondió, así que no se pudo oír nada. Inténtalo de nuevo; si sigue pasando, reinicia el teléfono. Puedes compartir los detalles para ayudar a corregirlo.</string>
     <string name="dictate_nothing">No se oyó nada. Habla cuando aparezca «Escuchando…» y luego toca Listo. Si sigue pasando, puedes compartir los detalles para ayudar a corregirlo.</string>
+    <string name="dictate_stalled">El micrófono dejó de enviar sonido al servicio de voz, incluso tras volver a empezar. Puede que otra app esté usando el micrófono o que el servicio de voz esté bloqueado: reiniciar el teléfono suele arreglarlo. Puedes compartir los detalles para ayudar a corregirlo.</string>
 </resources>

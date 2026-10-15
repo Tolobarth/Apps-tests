@@ -353,10 +353,11 @@ class EditorActivity : GatedActivity() {
             when {
                 discard -> Unit
                 // Nothing came out: say so instead of silently closing, with the details to share.
-                text.isBlank() && (error == null || error == Dictation.NO_ANSWER || Speech.isSilence(error)) -> dictationGotNothing(error, d.details)
+                text.isBlank() && (error == null || error == Dictation.NO_ANSWER || error == Dictation.AUDIO_STALLED || Speech.isSilence(error)) -> dictationGotNothing(error, d.details)
+                error == Dictation.AUDIO_STALLED -> Toast.makeText(this, R.string.dictate_stalled, Toast.LENGTH_LONG).show()
                 error != null -> showSpeechError(error)
             }
-        }, tag, Speech.create(this, online))
+        }, tag, { Speech.create(this, online) }, speechSetupNote)
         dictation = d
         speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.dictate_title).setView(shown)
             .setPositiveButton(R.string.dictate_done) { _, _ -> d.stop() }
@@ -507,7 +508,7 @@ class EditorActivity : GatedActivity() {
     private fun dictationGotNothing(error: Int?, details: String) {
         val report = CrashLog.header(this) + "Dictation log\n" + details
         MaterialAlertDialogBuilder(this)
-            .setMessage(if (error == Dictation.NO_ANSWER) R.string.dictate_no_answer else R.string.dictate_nothing)
+            .setMessage(when (error) { Dictation.NO_ANSWER -> R.string.dictate_no_answer; Dictation.AUDIO_STALLED -> R.string.dictate_stalled; else -> R.string.dictate_nothing })
             .setPositiveButton(android.R.string.ok, null)
             .setNeutralButton(R.string.transcribe_share_details) { _, _ ->
                 startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
@@ -550,6 +551,8 @@ class EditorActivity : GatedActivity() {
     }
 
     private var speechChecking = false
+    /** What the last language check said ("Ready fr-FR", "Unknown"…), for the dictation log. */
+    private var speechSetupNote = ""
 
     /**
      * Runs [then] once the phone can recognise the app's language: straight away when it can, after a download the person
@@ -562,6 +565,7 @@ class EditorActivity : GatedActivity() {
         speechChecking = true
         SpeechSetup.check(this, want) { st ->
             speechChecking = false
+            speechSetupNote = "check: $st"
             if (isFinishing || isDestroyed) return@check
             when (st) {
                 is SpeechSetup.State.Ready -> then(st.tag, false)

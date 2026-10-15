@@ -388,4 +388,5 @@
     <!-- v0.24 -->
     <string name="dictate_no_answer">Der Sprachdienst des Telefons hat nicht reagiert, daher konnte nichts gehört werden. Versuche es noch einmal; wenn es weiter passiert, starte das Telefon neu. Du kannst die Details teilen, damit das behoben werden kann.</string>
     <string name="dictate_nothing">Es wurde nichts gehört. Sprich, sobald „Höre zu…“ erscheint, und tippe dann auf Fertig. Wenn es weiter passiert, kannst du die Details teilen.</string>
+    <string name="dictate_stalled">Das Mikrofon hat dem Sprachdienst keinen Ton mehr geliefert, auch nicht nach einem Neustart der Aufnahme. Vielleicht nutzt eine andere App das Mikrofon oder der Sprachdienst hängt: Ein Neustart des Telefons hilft meist. Du kannst die Details teilen, damit das behoben werden kann.</string>
 </resources>

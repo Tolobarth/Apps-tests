@@ -45,10 +45,15 @@ object Speech {
      */
     fun language(c: Context, phone: Locale = Locale.getDefault()): String {
         val chosen = Prefs.language(c)
-        if (chosen.isEmpty()) return phone.toLanguageTag()
-        val l = Locale.forLanguageTag(chosen)
-        return if (l.country.isEmpty() && l.language == phone.language && phone.country.isNotEmpty()) phone.toLanguageTag() else chosen
+        val base = if (chosen.isEmpty()) phone else Locale.forLanguageTag(chosen)
+        if (base.country.isNotEmpty()) return base.toLanguageTag()
+        if (base.language == phone.language && phone.country.isNotEmpty()) return phone.toLanguageTag()
+        // Still bare (e.g. an in-app language without region): recognisers want one, so use the usual one ("fr" → fr-FR).
+        return REGION[base.language]?.let { "${base.language}-$it" } ?: base.toLanguageTag()
     }
+
+    /** The region a recogniser most likely has for a bare language. */
+    val REGION = mapOf("fr" to "FR", "en" to "US", "de" to "DE", "es" to "ES", "pt" to "BR", "it" to "IT")
 
     fun intent(c: Context, language: String = language(c)): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -107,8 +112,14 @@ class Dictation(
     private val onUpdate: (text: String, hearing: String) -> Unit,
     private val onEnd: (text: String, error: Int?) -> Unit,
     private val language: String = Speech.language(c),
-    private val recognizer: SpeechRecognizer = Speech.create(c),
+    private val newRecognizer: () -> SpeechRecognizer = { Speech.create(c) },
+    /** What the language check said, for the log. */
+    private val setup: String = "",
 ) {
+    private var recognizer = newRecognizer()
+    private var lastSignal = 0L
+    private var ready = false
+    private var restarts = 0
     private val parts = ArrayList<String>()
     private var stopping = false
     private var ended = false
@@ -121,7 +132,11 @@ class Dictation(
     val details get() = log.joinToString("\n")
 
     private fun note(s: String) { if (log.size < 200) log += "+%.1fs %s".format((android.os.SystemClock.elapsedRealtime() - t0) / 1000.0, s) }
-    private fun ev(name: String) { events++; if (events <= 30 || !name.startsWith("rms")) note(name) }
+    private fun ev(name: String) {
+        events++; lastSignal = android.os.SystemClock.elapsedRealtime()
+        if (name == "ready") ready = true
+        if (events <= 30 || !name.startsWith("rms")) note(name)
+    }
 
     internal val listener = object : RecognitionListener {
         override fun onPartialResults(b: Bundle?) { ev("partial ${Speech.best(b).length} chars"); onUpdate(text, Speech.best(b)) }
@@ -141,13 +156,33 @@ class Dictation(
     }
 
     fun start() {
-        note("start $language")
+        note("start $language" + if (setup.isNotEmpty()) " ($setup)" else "")
         recognizer.setRecognitionListener(listener); listen()
+        main.postDelayed(stallCheck, 1000)
         // A speech service that never answers at all (not even "ready") would leave "Speak now" up forever.
         main.postDelayed({ if (!ended && events == 0) { note("no answer from the speech service"); recognizer.cancel(); finish(NO_ANSWER) } }, NO_ANSWER_MS)
     }
 
-    private fun listen() { note("listen"); recognizer.startListening(Speech.intent(c, language)) }
+    private fun listen() { note("listen"); lastSignal = android.os.SystemClock.elapsedRealtime(); recognizer.startListening(Speech.intent(c, language)) }
+
+    /**
+     * While listening the recogniser reports the sound level many times a second. If that stops for [STALL_MS], the
+     * microphone isn't delivering sound: start over once with a fresh recogniser, then give up with [AUDIO_STALLED].
+     */
+    private val stallCheck = object : Runnable {
+        override fun run() {
+            if (ended) return
+            if (!stopping && ready && android.os.SystemClock.elapsedRealtime() - lastSignal > STALL_MS) {
+                if (restarts == 0) {
+                    restarts++; note("no sound for ${STALL_MS / 1000} s, starting again")
+                    runCatching { recognizer.cancel() }; runCatching { recognizer.destroy() }
+                    ready = false
+                    recognizer = newRecognizer(); recognizer.setRecognitionListener(listener); listen()
+                } else { note("no sound again"); runCatching { recognizer.cancel() }; finish(AUDIO_STALLED); return }
+            }
+            main.postDelayed(this, 1000)
+        }
+    }
 
     /** Stops listening; what is being said right now is still recognised and kept. */
     fun stop() {
@@ -172,6 +207,9 @@ class Dictation(
         const val NO_ANSWER_MS = 8000L
         /** The speech service gave no sign of life at all. */
         const val NO_ANSWER = -3
+        /** The microphone stopped delivering sound twice. */
+        const val AUDIO_STALLED = -4
+        const val STALL_MS = 4000L
     }
 }
 

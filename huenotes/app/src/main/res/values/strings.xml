@@ -388,4 +388,5 @@
     <!-- v0.24 -->
     <string name="dictate_no_answer">The phone’s speech service didn’t respond, so nothing could be heard. Try again; if it keeps happening, restart the phone. You can share the details to help fix this.</string>
     <string name="dictate_nothing">Nothing was heard. Speak after “Listening…” appears, then tap Done. If it keeps happening, you can share the details to help fix it.</string>
+    <string name="dictate_stalled">The microphone stopped sending sound to the speech service, even after starting again. Another app may be using the microphone, or the speech service is stuck: restarting the phone usually fixes it. You can share the details to help fix this.</string>
 </resources>
