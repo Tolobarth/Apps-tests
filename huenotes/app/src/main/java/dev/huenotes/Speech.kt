@@ -255,12 +255,17 @@ class Transcriber(
     private val onEnd: (text: String, error: Int?) -> Unit,
     private val language: String = Speech.language(c),
     private val recognizer: SpeechRecognizer = Speech.create(c),
+    /** Writes the recording as 16 kHz mono PCM; tests replace it. */
+    private val decode: (File, OutputStream, () -> Boolean, (Long) -> Unit) -> Long = Pcm::decode,
 ) {
     private val parts = ArrayList<String>()
     @Volatile private var cancelled = false
     private var ended = false
     private val main = Handler(Looper.getMainLooper())
-    private var position = 0L
+    @Volatile private var position = 0L
+    /** Our end of the pipe the recogniser reads. Kept open for the whole session: Android hands the request to the speech
+     *  service a moment after startListening(), and a closed descriptor at that point crashes the app. */
+    private var source: ParcelFileDescriptor? = null
     val text get() = DictationText.join(parts)
 
     internal val listener = object : RecognitionListener {
@@ -279,35 +284,45 @@ class Transcriber(
 
     @RequiresApi(33)
     fun start() {
-        val (read, write) = ParcelFileDescriptor.createPipe()
-        recognizer.setRecognitionListener(listener)
-        recognizer.startListening(Speech.intent(c, language)
-            .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, read)
-            .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
-            .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
-            .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, Pcm.RATE)
-            .putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
-            .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false))
-        read.close()     // the recogniser holds its own copy
+        val (read, write) = try { ParcelFileDescriptor.createPipe().let { it[0] to it[1] } } catch (e: IOException) { finish(SpeechRecognizer.ERROR_CLIENT); return }
+        source = read
+        try {
+            recognizer.setRecognitionListener(listener)
+            recognizer.startListening(Speech.intent(c, language)
+                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, read)
+                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
+                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
+                .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, Pcm.RATE)
+                .putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
+                .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false))
+        } catch (e: Exception) { runCatching { write.close() }; finish(SpeechRecognizer.ERROR_CLIENT); return }
         Thread {
+            var ok = false
             try {
                 ParcelFileDescriptor.AutoCloseOutputStream(write).use { out ->
-                    Pcm.decode(file, out, { cancelled }) { ms -> position = ms; main.post { if (!ended) onUpdate(text, ms) } }
+                    decode(file, out, { cancelled }) { ms -> position = ms; main.post { if (!ended) onUpdate(text, ms) } }
                 }
-            } catch (e: Exception) {
-                runCatching { write.close() }
-                if (!cancelled) main.post { if (!ended) { recognizer.cancel(); finish(if (parts.isEmpty()) SpeechRecognizer.ERROR_AUDIO else null) } }
+                ok = true
+            } catch (e: Exception) { runCatching { write.close() } }
+            main.post {
+                if (ended || cancelled) return@post
+                if (!ok) { recognizer.cancel(); finish(if (parts.isEmpty()) SpeechRecognizer.ERROR_AUDIO else null) }
+                // The whole recording has been handed over; if the service never says it's done, stop waiting.
+                else main.postDelayed({ if (!ended) { recognizer.cancel(); finish(null) } }, END_GRACE_MS)
             }
         }.start()
     }
 
     /** Stops, keeping what was already transcribed. */
-    fun cancel() { cancelled = true; if (!ended) { recognizer.cancel(); finish(null) } }
+    fun cancel() { cancelled = true; if (!ended) { runCatching { recognizer.cancel() }; finish(null) } }
 
     private fun finish(error: Int?) {
         if (ended) return
         ended = true; cancelled = true
-        recognizer.destroy()
+        runCatching { recognizer.destroy() }
+        source?.let { runCatching { it.close() } }; source = null
         onEnd(text, error)
     }
+
+    companion object { const val END_GRACE_MS = 30_000L }
 }

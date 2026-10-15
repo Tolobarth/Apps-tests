@@ -180,6 +180,50 @@ class SpeechTest {
         assertEquals("First part. Second part" to null, ended)
     }
 
+    @Test fun theAudioPipeStaysOpenUntilTheSessionEnds() {
+        // Android passes the request to the speech service a moment after startListening(): closing the pipe earlier
+        // crashed the app (v0.15–0.17).
+        val gate = java.util.concurrent.CountDownLatch(1)
+        var ended: Pair<String, Int?>? = null
+        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e },
+            decode = { _, out, _, _ -> out.write(ByteArray(3200)); gate.await(5, java.util.concurrent.TimeUnit.SECONDS); 100L })
+        t.start()
+        val pfd = latest().lastRecognizerIntent.getParcelableExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, android.os.ParcelFileDescriptor::class.java)!!
+        assertTrue(pfd.fileDescriptor.valid())
+        t.listener.onSegmentResults(results("hello there"))
+        assertTrue("still open while transcribing", pfd.fileDescriptor.valid())
+        t.listener.onEndOfSegmentedSession()
+        gate.countDown()
+        assertEquals("Hello there" to null, ended)
+        assertThrows(IllegalStateException::class.java) { pfd.fd }
+    }
+
+    @Test fun aServiceThatNeverFinishesIsStoppedAfterTheRecordingIsHandedOver() {
+        var ended: Pair<String, Int?>? = null
+        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e }, decode = { _, _, _, _ -> 0L })
+        t.start()
+        t.listener.onSegmentResults(results("partial"))
+        Thread.sleep(200); ShadowLooper.idleMainLooper()
+        assertNull(ended)
+        ShadowLooper.idleMainLooper(Transcriber.END_GRACE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals("Partial" to null, ended)
+    }
+
+    @Test fun anUnreadableRecordingEndsWithAnError() {
+        var ended: Pair<String, Int?>? = null
+        val t = Transcriber(app, File("x.m4a"), { _, _ -> }, { text, e -> ended = text to e }, decode = { _, _, _, _ -> throw java.io.IOException("bad") })
+        t.start(); Thread.sleep(200); ShadowLooper.idleMainLooper()
+        assertEquals("" to SpeechRecognizer.ERROR_AUDIO, ended)
+    }
+
+    @Test fun crashReportsAreKeptUntilDealtWith() {
+        CrashLog.clear(app)
+        val r = CrashLog.report(app, Thread.currentThread(), IllegalStateException("boom"))
+        assertTrue(r.startsWith("HueNotes ")); assertTrue(r.contains("IllegalStateException: boom"))
+        java.io.File(app.filesDir, "last-crash.txt").writeText(r)
+        assertEquals(r, CrashLog.pending(app)); CrashLog.clear(app); assertNull(CrashLog.pending(app))
+    }
+
     // ---- editor --------------------------------------------------------------------------------
 
     /** The phone's speech service answers the first-use check: the app's language is installed. */

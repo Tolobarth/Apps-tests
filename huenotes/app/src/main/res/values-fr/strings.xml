@@ -322,9 +322,7 @@
     <string name="translate_target_title">%1$s → …</string>
     <string name="translate_other_source">Autre langue source</string>
     <string name="translate_setup_title">Traduction</string>
-    <string name="translate_downloading">Téléchargement des packs de langue…</string>
     <string name="translate_download_failed">Les packs de langue n’ont pas pu être téléchargés. Vérifiez la connexion et réessayez.</string>
-    <string name="translate_ready">Les packs de langue sont prêts. Choisissez à nouveau Traduire.</string>
     <string name="translate_working">Traduction : %1$s…</string>
     <string name="translate_failed">La traduction n’a pas fonctionné. Réessayez.</string>
         <string name="translate_add_below">Ajouter dessous</string>
@@ -341,4 +339,13 @@
         <item quantity="one">La traduction a besoin d’un pack de langue Google (%1$s, environ 30 Mo), téléchargé une fois. Ensuite, elle fonctionne hors connexion et votre note reste sur le téléphone.</item>
         <item quantity="other">La traduction a besoin de packs de langue Google (%1$s, environ 30 Mo chacun), téléchargés une fois. Ensuite, elle fonctionne hors connexion et votre note reste sur le téléphone.</item>
     </plurals>
+
+    <!-- v0.18 -->
+    <string name="translate_downloading_named">Téléchargement : %1$s…</string>
+    <string name="translate_ready_named">Prêt : %1$s</string>
+    <string name="translate_retry">Réessayer</string>
+    <string name="crash_title">HueNotes s’est fermé de façon inattendue</string>
+    <string name="crash_msg">Désolé, HueNotes s’est arrêté la dernière fois à cause d’un bug. Vous pouvez partager le rapport d’erreur pour aider à le corriger. Il ne contient que des détails techniques (version de l’app, modèle du téléphone, l’erreur), aucune note, et n’est envoyé que si vous le partagez.</string>
+    <string name="crash_share">Partager le rapport</string>
+    <string name="crash_dismiss">Ignorer</string>
 </resources>

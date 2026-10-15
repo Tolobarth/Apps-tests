@@ -33,7 +33,10 @@ class TranslateTest {
         override fun languages() = listOf("de", "en", "es", "fr", "pt")
         override fun detect(text: String, done: (String?) -> Unit) = done(detected)
         override fun downloaded(done: (Set<String>) -> Unit) = done(have.toSet())
-        override fun download(from: String, to: String, done: (Boolean) -> Unit) { downloads++; have += from; have += to; done(true) }
+        var downloadError: String? = null
+        override fun download(from: String, to: String, done: (String?) -> Unit) {
+            downloads++; if (downloadError == null) { have += from; have += to }; done(downloadError)
+        }
         override fun translate(from: String, to: String, pieces: List<String>, done: (List<String>?) -> Unit) {
             asked += pieces; done(if (fail) null else pieces.map { it.uppercase() })
         }
@@ -129,6 +132,25 @@ class TranslateTest {
         val (c, _) = open(Note(title = "T", body = "Une note"))
         menuTranslate(c.get()); pickFirst()
         assertEquals("Une note", c.get().findViewById<EditText>(R.id.bodyEdit).text.toString())
+    }
+
+    @Test fun aFailedDownloadSaysWhyAndOffersARetry() {
+        fake.downloadError = "No network"
+        val (c, _) = open(Note(title = "Bonjour", body = "Une note"))
+        menuTranslate(c.get()); pickFirst()
+        press(AlertDialog.BUTTON_POSITIVE)                  // Download → fails
+        val d = dialog()
+        assertTrue(d.findViewById<android.widget.TextView>(android.R.id.message)!!.text.contains("No network"))
+        fake.downloadError = null
+        press(AlertDialog.BUTTON_POSITIVE)                  // Try again → works, translation carries on
+        assertTrue(dialog().getButton(AlertDialog.BUTTON_POSITIVE).text == app.getString(R.string.translate_add_below))
+    }
+
+    @Test fun aPackThatWentMissingIsFetchedBeforeTranslating() {
+        fake.have += setOf("fr", "en")
+        val (c, _) = open(Note(title = "Bonjour", body = "Une note"))
+        menuTranslate(c.get()); pickFirst()
+        assertEquals("downloadModelIfNeeded runs before every translation", 1, fake.downloads)
     }
 
     @Test fun settingsListsAndDeletesLanguagePacks() {

@@ -529,18 +529,32 @@ class EditorActivity : GatedActivity() {
             if (missing.isEmpty()) { translateNote(src, dst); return@downloaded }
             MaterialAlertDialogBuilder(this).setTitle(R.string.translate_setup_title)
                 .setMessage(resources.getQuantityString(R.plurals.translate_setup_msg, missing.size, missing.joinToString(", ") { Translate.displayName(it) }))
-                .setPositiveButton(R.string.speech_download) { _, _ ->
-                    val wait = busyDialog(getString(R.string.translate_downloading))
-                    Translate.engine.download(src, dst) { ok ->
-                        val waiting = wait.isShowing
-                        wait.dismiss()
-                        if (isFinishing || isDestroyed) return@download
-                        if (!ok) Toast.makeText(this, R.string.translate_download_failed, Toast.LENGTH_LONG).show()
-                        else if (waiting) translateNote(src, dst)
-                        else Toast.makeText(this, R.string.translate_ready, Toast.LENGTH_SHORT).show()
-                    }
-                }.setNegativeButton(R.string.speech_not_now, null).show()
+                .setPositiveButton(R.string.speech_download) { _, _ -> downloadPacks(src, dst, missing) }
+                .setNegativeButton(R.string.speech_not_now, null).show()
         }
+    }
+
+    /** Like the speech download: progress while Google fetches the packs, then the translation carries on by itself. */
+    private fun downloadPacks(src: String, dst: String, missing: List<String>) {
+        val names = missing.joinToString(", ") { Translate.displayName(it) }
+        val wait = busyDialog(getString(R.string.translate_downloading_named, names))
+        Translate.engine.download(src, dst) { error ->
+            val waiting = wait.isShowing
+            wait.dismiss()
+            if (isFinishing || isDestroyed) return@download
+            when {
+                error != null -> packsFailed(src, dst, missing, error)
+                waiting -> { Toast.makeText(this, getString(R.string.translate_ready_named, names), Toast.LENGTH_SHORT).show(); translateNote(src, dst, packsChecked = true) }
+                else -> Toast.makeText(this, getString(R.string.translate_ready_named, names), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun packsFailed(src: String, dst: String, missing: List<String>, reason: String) {
+        MaterialAlertDialogBuilder(this).setTitle(R.string.translate_setup_title)
+            .setMessage(getString(R.string.translate_download_failed) + "\n\n(" + reason + ")")
+            .setPositiveButton(R.string.translate_retry) { _, _ -> downloadPacks(src, dst, missing) }
+            .setNegativeButton(R.string.btn_cancel, null).show()
     }
 
     private fun busyDialog(title: String) = MaterialAlertDialogBuilder(this).setTitle(title)
@@ -549,15 +563,22 @@ class EditorActivity : GatedActivity() {
             setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
         }).setNegativeButton(R.string.speech_hide, null).show()
 
-    private fun translateNote(src: String, dst: String) {
+    /** Makes sure the packs are really there (a no-op when they are) before translating, so a pack that went missing is fetched. */
+    private fun translateNote(src: String, dst: String, packsChecked: Boolean = false) {
         val n = current()
         val wait = busyDialog(getString(R.string.translate_working, Translate.displayName(dst)))
-        Translate.translateTexts(src, dst, Translate.inputs(n)) { out ->
+        fun run() = Translate.translateTexts(src, dst, Translate.inputs(n)) { out ->
             val waiting = wait.isShowing
             wait.dismiss()
             if (isFinishing || isDestroyed || !waiting) return@translateTexts
             if (out == null) { Toast.makeText(this, R.string.translate_failed, Toast.LENGTH_LONG).show(); return@translateTexts }
             showTranslation(n, Translate.applyTo(n, out), dst)
+        }
+        if (packsChecked) { run(); return }
+        Translate.engine.download(src, dst) { error ->
+            if (error == null) { run(); return@download }
+            wait.dismiss()
+            if (!isFinishing && !isDestroyed) packsFailed(src, dst, listOf(src, dst), error)
         }
     }
 

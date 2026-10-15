@@ -322,9 +322,7 @@
     <string name="translate_target_title">%1$s → …</string>
     <string name="translate_other_source">Andere Ausgangssprache</string>
     <string name="translate_setup_title">Übersetzung</string>
-    <string name="translate_downloading">Sprachpakete werden heruntergeladen…</string>
     <string name="translate_download_failed">Die Sprachpakete konnten nicht heruntergeladen werden. Prüfe die Verbindung und versuche es noch einmal.</string>
-    <string name="translate_ready">Die Sprachpakete sind bereit. Wähle noch einmal Übersetzen.</string>
     <string name="translate_working">Übersetzung: %1$s…</string>
     <string name="translate_failed">Die Übersetzung hat nicht geklappt. Versuche es noch einmal.</string>
         <string name="translate_add_below">Darunter einfügen</string>
@@ -341,4 +339,13 @@
         <item quantity="one">Für die Übersetzung wird ein Google-Sprachpaket (%1$s, etwa 30 MB) einmal heruntergeladen. Danach funktioniert sie offline und deine Notiz bleibt auf dem Telefon.</item>
         <item quantity="other">Für die Übersetzung werden Google-Sprachpakete (%1$s, je etwa 30 MB) einmal heruntergeladen. Danach funktioniert sie offline und deine Notiz bleibt auf dem Telefon.</item>
     </plurals>
+
+    <!-- v0.18 -->
+    <string name="translate_downloading_named">%1$s wird heruntergeladen…</string>
+    <string name="translate_ready_named">Bereit: %1$s</string>
+    <string name="translate_retry">Erneut versuchen</string>
+    <string name="crash_title">HueNotes wurde unerwartet beendet</string>
+    <string name="crash_msg">HueNotes wurde beim letzten Mal wegen eines Fehlers beendet. Du kannst den Fehlerbericht teilen, damit er behoben werden kann. Er enthält nur technische Angaben (App-Version, Telefonmodell, der Fehler), keine Notizen, und wird nur gesendet, wenn du ihn teilst.</string>
+    <string name="crash_share">Bericht teilen</string>
+    <string name="crash_dismiss">Schließen</string>
 </resources>

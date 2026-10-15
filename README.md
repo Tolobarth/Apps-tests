@@ -180,3 +180,8 @@ the notes (`LinkIndex.kt`), so backup and sync are unaffected. Addresses keep br
 - Voice notes now show a **Transcribe** button on the player when the phone can transcribe (Android 13+), besides the ⋮ menu entry.
 - The translation engine is a 12–17 MB native library per CPU type, so debug APKs are now **split per ABI**: install `app-arm64-v8a-debug.apk` on current phones (`armeabi-v7a` for old 32-bit ones). The Play App Bundle splits by itself.
 - Not yet tried on a device: real ML Kit downloads and translation quality (tests use a fake engine).
+
+### v0.18 — Transcription crash fix, sturdier translation downloads
+- **Fixed:** Transcribe closed the app. The audio pipe handed to the recogniser was closed right after `startListening()`, but Android passes the request to the speech service a moment later, and a closed descriptor there crashes the app. The pipe now stays open for the whole session (covered by `SpeechTest`). If the service never says it's finished, HueNotes stops waiting 30 s after the whole recording was handed over and keeps what was transcribed.
+- **Translation packs** now behave like the speech download: on first use HueNotes asks, shows "Downloading French…", and carries on with the translation when done. Before each translation it also makes sure the packs are really present (a no-op when they are), so a missing pack is fetched instead of the translation failing. A failed download says why and offers **Try again**. Every ML Kit call is guarded so problems end in a message, not a closed app.
+- **Error reports:** if HueNotes closes because of a bug, the error (versions, phone model, stack trace; no notes) is kept on the phone and the next start offers to share it. Nothing is sent unless the person shares it.

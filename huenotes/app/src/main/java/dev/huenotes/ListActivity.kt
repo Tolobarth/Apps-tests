@@ -91,6 +91,23 @@ class ListActivity : GatedActivity() {
         Snapshots.maybeRun(this, store)
         refresh()
         SyncManager.syncIfDue(this) { if (!isFinishing) refresh() }
+        offerCrashReport()
+    }
+
+    private var crashAsked = false
+
+    /** After HueNotes closed because of a bug: offer to share what went wrong (nothing is sent unless the person shares it). */
+    private fun offerCrashReport() {
+        if (crashAsked) return
+        val report = CrashLog.pending(this) ?: return
+        crashAsked = true
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle(R.string.crash_title).setMessage(R.string.crash_msg)
+            .setPositiveButton(R.string.crash_share) { _, _ ->
+                CrashLog.clear(this)
+                startActivity(Intent.createChooser(CrashLog.shareIntent(report), getString(R.string.share_chooser)))
+            }
+            .setNegativeButton(R.string.crash_dismiss) { _, _ -> CrashLog.clear(this) }
+            .setCancelable(false).show()
     }
 
     override fun onResume() {

@@ -22,8 +22,8 @@ object Translate {
         /** The language [text] is written in, or null when unsure. */
         fun detect(text: String, done: (String?) -> Unit)
         fun downloaded(done: (Set<String>) -> Unit)
-        /** Downloads whatever [from] → [to] still needs. */
-        fun download(from: String, to: String, done: (Boolean) -> Unit)
+        /** Downloads whatever [from] → [to] still needs (nothing if both are there). [done] gets null, or why it failed. */
+        fun download(from: String, to: String, done: (String?) -> Unit)
         /** Translates each piece; null on failure. */
         fun translate(from: String, to: String, pieces: List<String>, done: (List<String>?) -> Unit)
         fun delete(lang: String, done: (Boolean) -> Unit)
@@ -99,7 +99,8 @@ object Translate {
     object MlKit : Engine {
         override fun languages(): List<String> = TranslateLanguage.getAllLanguages()
 
-        override fun detect(text: String, done: (String?) -> Unit) {
+        // Every call is guarded: an ML Kit problem must end in a message, never in the app closing.
+        override fun detect(text: String, done: (String?) -> Unit) = guard({ done(null) }) {
             val id = LanguageIdentification.getClient()
             id.identifyLanguage(text.take(2000))
                 .addOnSuccessListener { tag -> done(if (tag == "und") null else TranslateLanguage.fromLanguageTag(tag)) }
@@ -107,30 +108,32 @@ object Translate {
                 .addOnCompleteListener { id.close() }
         }
 
-        override fun downloaded(done: (Set<String>) -> Unit) {
+        override fun downloaded(done: (Set<String>) -> Unit) = guard({ done(emptySet()) }) {
             RemoteModelManager.getInstance().getDownloadedModels(TranslateRemoteModel::class.java)
                 .addOnSuccessListener { models -> done(models.map { it.language }.toSet()) }
                 .addOnFailureListener { done(emptySet()) }
         }
 
+        private inline fun guard(fallback: () -> Unit, block: () -> Unit) = try { block() } catch (e: Exception) { fallback() }
+
         private fun client(from: String, to: String) =
             Translation.getClient(TranslatorOptions.Builder().setSourceLanguage(from).setTargetLanguage(to).build())
 
-        override fun download(from: String, to: String, done: (Boolean) -> Unit) {
+        override fun download(from: String, to: String, done: (String?) -> Unit) = guard({ done("ML Kit unavailable") }) {
             val t = client(from, to)
             t.downloadModelIfNeeded(DownloadConditions.Builder().build())
-                .addOnSuccessListener { done(true) }.addOnFailureListener { done(false) }
+                .addOnSuccessListener { done(null) }.addOnFailureListener { done(it.message ?: it.javaClass.simpleName) }
                 .addOnCompleteListener { t.close() }
         }
 
-        override fun translate(from: String, to: String, pieces: List<String>, done: (List<String>?) -> Unit) {
+        override fun translate(from: String, to: String, pieces: List<String>, done: (List<String>?) -> Unit) = guard({ done(null) }) {
             val t = client(from, to)
             Tasks.whenAllSuccess<String>(pieces.map { t.translate(it) })
                 .addOnSuccessListener { done(it) }.addOnFailureListener { done(null) }
                 .addOnCompleteListener { t.close() }
         }
 
-        override fun delete(lang: String, done: (Boolean) -> Unit) {
+        override fun delete(lang: String, done: (Boolean) -> Unit) = guard({ done(false) }) {
             RemoteModelManager.getInstance().deleteDownloadedModel(TranslateRemoteModel.Builder(lang).build())
                 .addOnSuccessListener { done(true) }.addOnFailureListener { done(false) }
         }

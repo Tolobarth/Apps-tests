@@ -322,9 +322,7 @@
     <string name="translate_target_title">%1$s → …</string>
     <string name="translate_other_source">Outro idioma de origem</string>
     <string name="translate_setup_title">Tradução</string>
-    <string name="translate_downloading">Baixando pacotes de idioma…</string>
     <string name="translate_download_failed">Não foi possível baixar os pacotes de idioma. Verifique a conexão e tente de novo.</string>
-    <string name="translate_ready">Os pacotes de idioma estão prontos. Escolha Traduzir de novo.</string>
     <string name="translate_working">Traduzindo: %1$s…</string>
     <string name="translate_failed">A tradução não funcionou. Tente de novo.</string>
         <string name="translate_add_below">Adicionar abaixo</string>
@@ -341,4 +339,13 @@
         <item quantity="one">A tradução precisa de um pacote de idioma do Google (%1$s, cerca de 30 MB), baixado uma vez. Depois funciona off-line e sua nota fica no celular.</item>
         <item quantity="other">A tradução precisa de pacotes de idioma do Google (%1$s, cerca de 30 MB cada), baixados uma vez. Depois funciona off-line e sua nota fica no celular.</item>
     </plurals>
+
+    <!-- v0.18 -->
+    <string name="translate_downloading_named">Baixando %1$s…</string>
+    <string name="translate_ready_named">Pronto: %1$s</string>
+    <string name="translate_retry">Tentar de novo</string>
+    <string name="crash_title">O HueNotes fechou inesperadamente</string>
+    <string name="crash_msg">Desculpe, o HueNotes parou da última vez por causa de um bug. Você pode compartilhar o relatório de erro para ajudar a corrigir. Ele tem só detalhes técnicos (versão do app, modelo do celular, o erro), nenhuma nota, e só é enviado se você compartilhar.</string>
+    <string name="crash_share">Compartilhar relatório</string>
+    <string name="crash_dismiss">Dispensar</string>
 </resources>

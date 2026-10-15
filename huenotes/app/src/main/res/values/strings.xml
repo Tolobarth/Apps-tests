@@ -322,9 +322,7 @@
     <string name="translate_target_title">%1$s → …</string>
     <string name="translate_other_source">Other source language</string>
     <string name="translate_setup_title">Translation</string>
-    <string name="translate_downloading">Downloading language packs…</string>
     <string name="translate_download_failed">The language packs couldn’t be downloaded. Check the connection and try again.</string>
-    <string name="translate_ready">Language packs are ready. Choose Translate again.</string>
     <string name="translate_working">Translating: %1$s…</string>
     <string name="translate_failed">The translation didn’t work. Try again.</string>
         <string name="translate_add_below">Add below</string>
@@ -341,4 +339,13 @@
         <item quantity="one">Translation needs a Google language pack (%1$s, about 30 MB), downloaded once. After that it works offline and your note stays on the phone.</item>
         <item quantity="other">Translation needs Google language packs (%1$s, about 30 MB each), downloaded once. After that it works offline and your note stays on the phone.</item>
     </plurals>
+
+    <!-- v0.18 -->
+    <string name="translate_downloading_named">Downloading %1$s…</string>
+    <string name="translate_ready_named">Ready: %1$s</string>
+    <string name="translate_retry">Try again</string>
+    <string name="crash_title">HueNotes closed unexpectedly</string>
+    <string name="crash_msg">Sorry, HueNotes stopped last time because of a bug. You can share the error report to help fix it. It has technical details only (app version, phone model, the error), no notes, and is sent only if you share it.</string>
+    <string name="crash_share">Share report</string>
+    <string name="crash_dismiss">Dismiss</string>
 </resources>
