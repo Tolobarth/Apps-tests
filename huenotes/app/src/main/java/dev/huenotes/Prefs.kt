@@ -73,6 +73,11 @@ object Prefs {
     fun onlineSpeech(c: Context) = p(c).getBoolean("onlineSpeech", false)
     fun setOnlineSpeech(c: Context, v: Boolean) = p(c).edit().putBoolean("onlineSpeech", v).apply()
 
+    /** Translation targets picked recently, newest first. */
+    fun translateRecent(c: Context): List<String> = p(c).getString("translateRecent", "").orEmpty().split(',').filter { it.isNotBlank() }
+    fun addTranslateRecent(c: Context, lang: String) =
+        p(c).edit().putString("translateRecent", (listOf(lang) + translateRecent(c)).distinct().take(3).joinToString(",")).apply()
+
     fun backupFolder(c: Context) = p(c).getString("backupFolder", "").orEmpty()
     fun backupFolderName(c: Context) = p(c).getString("backupFolderName", "").orEmpty()
     fun setBackupFolder(c: Context, uri: String, name: String) = p(c).edit().putString("backupFolder", uri).putString("backupFolderName", name).apply()

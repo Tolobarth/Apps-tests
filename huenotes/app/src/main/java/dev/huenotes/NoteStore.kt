@@ -147,6 +147,9 @@ class NoteStore(
         db.execSQL("DELETE FROM note_versions WHERE note_uid=? AND id NOT IN (SELECT id FROM note_versions WHERE note_uid=? ORDER BY id DESC LIMIT $MAX_VERSIONS)", arrayOf(old.uid, old.uid))
     }
 
+    /** Keeps [n]'s current content as a version right now (before a big change such as replacing it with a translation). */
+    fun keepVersion(n: Note) = snapshot(n, force = true)
+
     /** Earlier versions of a note, newest first. */
     fun versions(noteUid: String): List<Version> =
         readableDatabase.rawQuery("SELECT id, title, body, checklist, saved_at FROM note_versions WHERE note_uid=? ORDER BY id DESC", arrayOf(noteUid)).use { c ->

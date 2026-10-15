@@ -112,6 +112,7 @@ class SettingsActivity : GatedActivity() {
             Speech.onDevice(this) -> R.string.settings_online_speech_sum_ondevice
             else -> R.string.settings_online_speech_sum
         }), Prefs.onlineSpeech(this)) { Prefs.setOnlineSpeech(this, it) }
+        row(getString(R.string.settings_translate_packs), getString(R.string.settings_translate_packs_sum)) { manageTranslationPacks() }
 
         section(R.string.settings_calendar)
         row(getString(R.string.settings_first_day), days[dayValues.indexOf(Prefs.firstDay(this)).coerceAtLeast(0)]) {
@@ -159,6 +160,22 @@ class SettingsActivity : GatedActivity() {
         val version = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
         row(getString(R.string.app_name), getString(R.string.about_version, version))
         row(getString(R.string.about_privacy), getString(R.string.about_privacy_sum))
+    }
+
+    /** Lists Google's downloaded translation packs (about 30 MB each); tapping one offers to delete it. */
+    private fun manageTranslationPacks() {
+        Translate.engine.downloaded { have ->
+            if (isFinishing || isDestroyed) return@downloaded
+            val langs = have.sortedBy { Translate.displayName(it) }
+            val b = MaterialAlertDialogBuilder(this).setTitle(R.string.settings_translate_packs).setNegativeButton(R.string.history_close, null)
+            if (langs.isEmpty()) b.setMessage(R.string.translate_packs_none)
+            else b.setItems(langs.map { Translate.displayName(it) }.toTypedArray()) { _, i ->
+                MaterialAlertDialogBuilder(this).setMessage(getString(R.string.translate_pack_delete, Translate.displayName(langs[i])))
+                    .setPositiveButton(R.string.translate_pack_delete_btn) { _, _ -> Translate.engine.delete(langs[i]) { if (!isFinishing) manageTranslationPacks() } }
+                    .setNegativeButton(R.string.btn_cancel, null).show()
+            }
+            b.show()
+        }
     }
 
     // ---- row helpers ---------------------------------------------------------------------------

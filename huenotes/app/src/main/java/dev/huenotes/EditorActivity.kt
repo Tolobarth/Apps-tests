@@ -111,6 +111,7 @@ class EditorActivity : GatedActivity() {
                 toolbar.menu.add(0, id, id, t).setIcon(icon).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
             }
         toolbar.menu.add(0, 4, 4, R.string.action_history).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        toolbar.menu.add(0, 5, 5, R.string.action_translate).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         toolbar.setOnMenuItemClickListener {
             when (it.itemId) {
                 0 -> { note = note.copy(pinned = !note.pinned); applyColor() }
@@ -118,6 +119,7 @@ class EditorActivity : GatedActivity() {
                 2 -> archive()
                 3 -> confirmDelete()
                 4 -> showHistory()
+                5 -> startTranslation()
             }
             true
         }
@@ -484,6 +486,115 @@ class EditorActivity : GatedActivity() {
         b.setNegativeButton(R.string.btn_cancel, null).show()
     }
 
+    // ---- translation -------------------------------------------------------------------------
+
+    private var translating = false
+
+    /** Translate: work out the note's language, ask for the target, fetch language packs if needed, then show the result. */
+    private fun startTranslation() {
+        if (translating) return
+        val n = current()
+        if (n.title.isBlank() && n.body.isBlank()) { Toast.makeText(this, R.string.translate_empty, Toast.LENGTH_SHORT).show(); return }
+        saveNow()
+        translating = true
+        val sample = (n.title + "\n" + if (n.checklist) Checklist.toPlain(Checklist.parse(n.body)) else n.body).trim()
+        Translate.engine.detect(sample) { src ->
+            translating = false
+            if (isFinishing || isDestroyed) return@detect
+            if (src == null) pickSourceLanguage { chooseTarget(it) } else chooseTarget(src)
+        }
+    }
+
+    private fun pickSourceLanguage(then: (String) -> Unit) {
+        val all = Translate.targets(Translate.engine.languages(), null, Translate.appLanguage(this), Prefs.translateRecent(this))
+        MaterialAlertDialogBuilder(this).setTitle(R.string.translate_source_title)
+            .setItems(all.map { Translate.displayName(it) }.toTypedArray()) { _, i -> then(all[i]) }
+            .setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private fun chooseTarget(src: String) {
+        val all = Translate.targets(Translate.engine.languages(), src, Translate.appLanguage(this), Prefs.translateRecent(this))
+        MaterialAlertDialogBuilder(this).setTitle(getString(R.string.translate_target_title, Translate.displayName(src)))
+            .setItems(all.map { Translate.displayName(it) }.toTypedArray()) { _, i -> withLanguagePacks(src, all[i]) }
+            .setNeutralButton(R.string.translate_other_source) { _, _ -> pickSourceLanguage { chooseTarget(it) } }
+            .setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    /** First use of a language pair: Google's packs (about 30 MB each) are downloaded once, with the person's go-ahead. */
+    private fun withLanguagePacks(src: String, dst: String) {
+        Prefs.addTranslateRecent(this, dst)
+        Translate.engine.downloaded { have ->
+            if (isFinishing || isDestroyed) return@downloaded
+            val missing = listOf(src, dst).filter { it !in have }
+            if (missing.isEmpty()) { translateNote(src, dst); return@downloaded }
+            MaterialAlertDialogBuilder(this).setTitle(R.string.translate_setup_title)
+                .setMessage(resources.getQuantityString(R.plurals.translate_setup_msg, missing.size, missing.joinToString(", ") { Translate.displayName(it) }))
+                .setPositiveButton(R.string.speech_download) { _, _ ->
+                    val wait = busyDialog(getString(R.string.translate_downloading))
+                    Translate.engine.download(src, dst) { ok ->
+                        val waiting = wait.isShowing
+                        wait.dismiss()
+                        if (isFinishing || isDestroyed) return@download
+                        if (!ok) Toast.makeText(this, R.string.translate_download_failed, Toast.LENGTH_LONG).show()
+                        else if (waiting) translateNote(src, dst)
+                        else Toast.makeText(this, R.string.translate_ready, Toast.LENGTH_SHORT).show()
+                    }
+                }.setNegativeButton(R.string.speech_not_now, null).show()
+        }
+    }
+
+    private fun busyDialog(title: String) = MaterialAlertDialogBuilder(this).setTitle(title)
+        .setView(com.google.android.material.progressindicator.LinearProgressIndicator(this).apply {
+            isIndeterminate = true
+            setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
+        }).setNegativeButton(R.string.speech_hide, null).show()
+
+    private fun translateNote(src: String, dst: String) {
+        val n = current()
+        val wait = busyDialog(getString(R.string.translate_working, Translate.displayName(dst)))
+        Translate.translateTexts(src, dst, Translate.inputs(n)) { out ->
+            val waiting = wait.isShowing
+            wait.dismiss()
+            if (isFinishing || isDestroyed || !waiting) return@translateTexts
+            if (out == null) { Toast.makeText(this, R.string.translate_failed, Toast.LENGTH_LONG).show(); return@translateTexts }
+            showTranslation(n, Translate.applyTo(n, out), dst)
+        }
+    }
+
+    private fun showTranslation(orig: Note, t: Note, dst: String) {
+        val plain = listOf(t.title, if (t.checklist) Checklist.toPlain(Checklist.parse(t.body)) else t.body).filter { it.isNotBlank() }.joinToString("\n\n")
+        MaterialAlertDialogBuilder(this).setTitle(Translate.displayName(dst)).setMessage(plain)
+            .setPositiveButton(R.string.translate_add_below) { _, _ -> addTranslation(t) }
+            .setNegativeButton(R.string.translate_replace) { _, _ -> replaceWithTranslation(orig, t) }
+            .setNeutralButton(R.string.translate_copy) { _, _ ->
+                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText(t.title, plain))
+                Toast.makeText(this, R.string.translate_copied, Toast.LENGTH_SHORT).show()
+            }.show()
+    }
+
+    /** The translation goes under the original: a paragraph (with the translated title as its first line), or more list rows. */
+    private fun addTranslation(t: Note) {
+        if (inChecklist()) {
+            val items = currentItems().filter { it.text.isNotBlank() } + Checklist.parse(t.body).map { it.copy(done = false) }
+            showChecklist(items)
+        } else {
+            val add = listOf(t.title, t.body.trim()).filter { it.isNotBlank() }.joinToString("\n")
+            val body = bodyEdit.text.toString().trimEnd()
+            bodyEdit.setText(if (body.isEmpty()) add else body + "\n\n" + add)
+        }
+        saveNow(); renderMeta()
+    }
+
+    /** Replacing is safe: the original stays in Version history. */
+    private fun replaceWithTranslation(orig: Note, t: Note) {
+        saveNow()
+        store.keepVersion(store.get(note.id) ?: orig)
+        titleEdit.setText(t.title)
+        if (inChecklist()) showChecklist(Checklist.parse(t.body)) else bodyEdit.setText(t.body)
+        saveNow(); renderMeta()
+        Toast.makeText(this, R.string.translate_replaced, Toast.LENGTH_LONG).show()
+    }
+
     private fun renderAttachments() {
         attachBox.removeAllViews()
         attachments.forEach { a ->
@@ -518,6 +629,7 @@ class EditorActivity : GatedActivity() {
             }
         }
         v.findViewById<View>(R.id.more).setOnClickListener { showAttachmentMenu(it, a) }
+        if (canTranscribe(a)) v.findViewById<View>(R.id.transcribe).apply { visibility = View.VISIBLE; setOnClickListener { transcribe(a) } }
         return v
     }
 

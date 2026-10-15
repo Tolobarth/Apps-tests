@@ -8,7 +8,25 @@ _Draft for the developer to review and host at a public URL before publishing. R
 HueNotes is a notes app. Your notes, checklists, photos, drawings and voice recordings are stored **on your device**.
 
 ## Data we collect
-**None.** The developer has no server and receives nothing from the app. There are no ads, no analytics and no crash-reporting services.
+**None.** The developer has no server and receives nothing from the app. There are no ads, no analytics and no crash-reporting services
+added by the developer. The optional features below talk to Google (or a website you saved) directly; the developer never receives that data.
+
+## Link titles
+When you save a link without a title, HueNotes fetches that web page once to read its title (Settings → Notes → Fetch link titles, on by default).
+The website sees an ordinary request from your phone.
+
+## Dictation and transcripts
+Speech is recognised by your phone's speech service (normally Google's). HueNotes uses **on-device** recognition whenever the phone has it,
+so your voice stays on the phone; the language is downloaded once by that service, from Google, when you first need it.
+Only if offline recognition can't handle your language **and** you agree (or switch on Settings → Notes → Online speech recognition)
+is your voice sent to the speech service to be recognised there, under that provider's privacy policy.
+
+## Translation
+Notes are translated **on your phone** with Google's ML Kit. Your note text is not sent anywhere. Each language pack (about 30 MB) is
+downloaded from Google the first time you need it, and can be deleted in Settings → Notes → Translation languages. As Google documents
+for ML Kit, using translation and language detection sends Google diagnostic and usage information: the languages involved, device and
+app information, performance metrics and error codes (encrypted in transit, not shared with third parties). This happens only when you
+use Translate.
 
 ## Optional Google sync
 If (and only if) you switch on "Sync with Google" in Settings:
@@ -18,13 +36,14 @@ If (and only if) you switch on "Sync with Google" in Settings:
 - Turning sync off stops all transfers. You can delete the synced copy from your Google Account settings (Manage third-party access / Drive hidden app data).
 
 ## Permissions
-- **Microphone** — only when you record an audio note. Recordings stay in the app.
+- **Microphone** — only when you record a voice note or dictate. Recordings stay in the app.
 - **Notifications** — to show reminders you set.
-- **Internet** — only used for Google sync.
+- **Internet** — Google sync, link titles, downloading speech and translation language packs, ML Kit diagnostics during translation, and online speech recognition if you allow it.
 - **Photos/Files** — only the items you pick or share into the app.
 
 ## Sharing
-Notes leave your device only when you share them yourself (share sheet, export, backup) or switch on Google sync.
+Notes leave your device only when you share them yourself (share sheet, export, backup) or switch on Google sync. Dictated words leave it
+only if you allow online speech recognition.
 
 ## App lock
 If you set a password, it is stored on the device as a salted hash. It cannot be recovered; the lock is not a substitute for device encryption.

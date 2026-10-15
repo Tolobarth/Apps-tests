@@ -314,4 +314,31 @@
     <string name="speech_not_offered">O serviço de voz do celular não oferece %1$s off-line.</string>
     <string name="speech_not_offered_online">O serviço de voz do celular não oferece %1$s off-line. Você pode usar o reconhecimento on-line: sua voz é então enviada ao serviço de voz (geralmente o Google).</string>
     <string name="speech_use_online">Usar on-line</string>
+
+    <!-- Translation (v0.17) -->
+    <string name="action_translate">Traduzir</string>
+    <string name="translate_empty">Nada para traduzir ainda</string>
+    <string name="translate_source_title">Em que idioma está esta nota?</string>
+    <string name="translate_target_title">%1$s → …</string>
+    <string name="translate_other_source">Outro idioma de origem</string>
+    <string name="translate_setup_title">Tradução</string>
+    <string name="translate_downloading">Baixando pacotes de idioma…</string>
+    <string name="translate_download_failed">Não foi possível baixar os pacotes de idioma. Verifique a conexão e tente de novo.</string>
+    <string name="translate_ready">Os pacotes de idioma estão prontos. Escolha Traduzir de novo.</string>
+    <string name="translate_working">Traduzindo: %1$s…</string>
+    <string name="translate_failed">A tradução não funcionou. Tente de novo.</string>
+        <string name="translate_add_below">Adicionar abaixo</string>
+    <string name="translate_replace">Substituir</string>
+    <string name="translate_copy">Copiar</string>
+    <string name="translate_copied">Tradução copiada</string>
+    <string name="translate_replaced">Substituído. O original está no histórico de versões.</string>
+    <string name="settings_translate_packs">Idiomas de tradução</string>
+    <string name="settings_translate_packs_sum">Pacotes de idioma baixados para tradução; toque em um para excluí-lo</string>
+    <string name="translate_packs_none">Nenhum pacote baixado ainda. Eles são baixados na primeira vez que você traduz.</string>
+    <string name="translate_pack_delete">Excluir o pacote de idioma (%1$s)? Ele será baixado de novo se precisar.</string>
+    <string name="translate_pack_delete_btn">Excluir</string>
+    <plurals name="translate_setup_msg">
+        <item quantity="one">A tradução precisa de um pacote de idioma do Google (%1$s, cerca de 30 MB), baixado uma vez. Depois funciona off-line e sua nota fica no celular.</item>
+        <item quantity="other">A tradução precisa de pacotes de idioma do Google (%1$s, cerca de 30 MB cada), baixados uma vez. Depois funciona off-line e sua nota fica no celular.</item>
+    </plurals>
 </resources>

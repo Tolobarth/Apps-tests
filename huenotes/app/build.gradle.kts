@@ -23,12 +23,15 @@ android {
         applicationId = "dev.huenotes"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.16"
+        versionCode = 17
+        versionName = "0.17"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    // ML Kit's translation engine is a large native library per CPU type. Sideloaded APKs are split per CPU (phones need
+    // arm64-v8a; armeabi-v7a for old 32-bit ones); the Play App Bundle does this split on its own.
+    splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a"); isUniversalApk = false } }
 }
 
 dependencies {
@@ -38,6 +41,8 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("androidx.work:work-runtime:2.10.0")
+    implementation("com.google.mlkit:translate:17.0.3")       // on-device translation; language packs downloaded on first use
+    implementation("com.google.mlkit:language-id:17.0.6")     // detects a note's language (model bundled, ~1 MB)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.test:core:1.5.0")
