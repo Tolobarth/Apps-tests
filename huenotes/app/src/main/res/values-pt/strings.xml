@@ -299,4 +299,19 @@
     <string name="settings_online_speech">Reconhecimento de voz on-line</string>
     <string name="settings_online_speech_sum">Este celular não reconhece voz sozinho. Se ativado, sua voz é enviada ao serviço de voz do celular (geralmente o Google) para ditados e transcrições.</string>
     <string name="settings_online_speech_sum_ondevice">Não é necessário: este celular reconhece voz sozinho, então sua voz fica no aparelho.</string>
+
+    <!-- Speech setup: language download on first use (v0.16) -->
+    <string name="speech_setup_title">Reconhecimento de voz</string>
+    <string name="speech_setup_msg">Para ditar e transcrever em %1$s, o serviço de voz do celular (Google) precisa baixá-lo uma vez. Depois funciona sem internet e sua voz fica no aparelho.</string>
+    <string name="speech_not_now">Agora não</string>
+    <string name="speech_downloading_title">Baixando %1$s…</string>
+    <string name="speech_hide">Ocultar</string>
+    <string name="speech_ready">O reconhecimento de voz em %1$s está pronto</string>
+    <string name="speech_download_started">O download de %1$s começou. O Android pode terminá-lo depois, por exemplo no Wi-Fi. Tente de novo em alguns minutos.</string>
+    <string name="speech_download_failed">O serviço de voz do celular não iniciou o download. Você pode baixar %1$s nas configurações de voz do celular (Reconhecimento de voz off-line ou Idiomas).</string>
+    <string name="speech_settings">Configurações de voz</string>
+    <string name="speech_still_downloading">O download de %1$s ainda não terminou. Tente de novo em alguns minutos.</string>
+    <string name="speech_not_offered">O serviço de voz do celular não oferece %1$s off-line.</string>
+    <string name="speech_not_offered_online">O serviço de voz do celular não oferece %1$s off-line. Você pode usar o reconhecimento on-line: sua voz é então enviada ao serviço de voz (geralmente o Google).</string>
+    <string name="speech_use_online">Usar on-line</string>
 </resources>

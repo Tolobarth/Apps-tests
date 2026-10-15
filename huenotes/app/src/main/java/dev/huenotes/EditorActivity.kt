@@ -320,6 +320,11 @@ class EditorActivity : GatedActivity() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             dictateAfterPermission = true; micPermission.launch(Manifest.permission.RECORD_AUDIO); return
         }
+        withSpeech { tag, online -> beginDictation(tag, online) }
+    }
+
+    private fun beginDictation(tag: String, online: Boolean) {
+        if (dictation != null || transcriber != null || recorder != null) return
         Player.stop()
         val target = dictationTarget()
         val cursor = target.selectionEnd.takeIf { it >= 0 } ?: target.text.length
@@ -334,7 +339,7 @@ class EditorActivity : GatedActivity() {
                 target.setText(t); target.setSelection(at.coerceAtMost(t.length))
             }
             if (error != null && !discard) showSpeechError(error)
-        })
+        }, tag, Speech.create(this, online))
         dictation = d
         speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.dictate_title).setView(shown)
             .setPositiveButton(R.string.dictate_done) { _, _ -> d.stop() }
@@ -351,6 +356,11 @@ class EditorActivity : GatedActivity() {
         if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
         val file = store.storage.file(a)
         if (!file.exists()) { Toast.makeText(this, R.string.file_not_here, Toast.LENGTH_SHORT).show(); return }
+        withSpeech { tag, online -> beginTranscript(a, file, tag, online) }
+    }
+
+    private fun beginTranscript(a: Attachment, file: File, tag: String, online: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || dictation != null || transcriber != null || recorder != null) return
         Player.stop()
         val total = if (a.durationMs > 0) " / " + AttachmentFiles.duration(a.durationMs) else ""
         val shown = speechStatusView(AttachmentFiles.duration(0) + total)
@@ -360,7 +370,7 @@ class EditorActivity : GatedActivity() {
             speechDialog?.dismiss(); speechDialog = null; transcriber = null
             if (text.isNotBlank()) { addTranscript(text); Toast.makeText(this, R.string.transcribe_added, Toast.LENGTH_SHORT).show() }
             if (error != null) showSpeechError(error)
-        })
+        }, tag, Speech.create(this, online))
         transcriber = t
         speechDialog = MaterialAlertDialogBuilder(this).setTitle(R.string.transcribe_title).setView(shown)
             .setNegativeButton(R.string.transcribe_stop) { _, _ -> t.cancel() }
@@ -385,11 +395,86 @@ class EditorActivity : GatedActivity() {
     }
 
     private fun showSpeechError(error: Int) {
-        if (Speech.isMissingLanguage(error) && android.os.Build.VERSION.SDK_INT >= 33 && Speech.onDevice(this)) {
-            MaterialAlertDialogBuilder(this).setMessage(R.string.speech_err_language)
-                .setPositiveButton(R.string.speech_download) { _, _ -> Speech.downloadLanguage(this) }
-                .setNegativeButton(R.string.btn_cancel, null).show()
-        } else Toast.makeText(this, Speech.errorText(error), Toast.LENGTH_LONG).show()
+        if (!Speech.isMissingLanguage(error)) { Toast.makeText(this, Speech.errorText(error), Toast.LENGTH_LONG).show(); return }
+        val tag = Speech.language(this)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && Speech.onDevice(this)) { offerSpeechDownload(tag) { _, _ -> }; return }
+        MaterialAlertDialogBuilder(this).setMessage(getString(R.string.speech_download_failed, SpeechSetup.displayName(tag)))
+            .setPositiveButton(R.string.speech_settings) { _, _ -> SpeechSetup.openSettings(this) }
+            .setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private var speechChecking = false
+
+    /**
+     * Runs [then] once the phone can recognise the app's language: straight away when it can, after a download the person
+     * agrees to when it can't yet, or with online recognition when offline speech doesn't offer the language and they allow it.
+     */
+    private fun withSpeech(then: (tag: String, online: Boolean) -> Unit) {
+        if (speechChecking) return
+        val want = Speech.language(this)
+        if (!Speech.onDevice(this)) { then(want, true); return }      // the regular recogniser downloads nothing up front
+        speechChecking = true
+        SpeechSetup.check(this, want) { st ->
+            speechChecking = false
+            if (isFinishing || isDestroyed) return@check
+            when (st) {
+                is SpeechSetup.State.Ready -> then(st.tag, false)
+                is SpeechSetup.State.Unknown -> then(want, false)
+                is SpeechSetup.State.NeedsDownload -> offerSpeechDownload(st.tag, then)
+                is SpeechSetup.State.Downloading ->
+                    MaterialAlertDialogBuilder(this).setMessage(getString(R.string.speech_still_downloading, SpeechSetup.displayName(st.tag)))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .setNeutralButton(R.string.speech_settings) { _, _ -> SpeechSetup.openSettings(this) }.show()
+                is SpeechSetup.State.NotOffered -> notOfferedOffline(want, then)
+            }
+        }
+    }
+
+    private fun notOfferedOffline(tag: String, then: (String, Boolean) -> Unit) {
+        val name = SpeechSetup.displayName(tag)
+        if (Prefs.onlineSpeech(this) && android.speech.SpeechRecognizer.isRecognitionAvailable(this)) { then(tag, true); return }
+        val b = MaterialAlertDialogBuilder(this).setNegativeButton(R.string.btn_cancel, null)
+        if (android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            b.setMessage(getString(R.string.speech_not_offered_online, name))
+                .setPositiveButton(R.string.speech_use_online) { _, _ -> Prefs.setOnlineSpeech(this, true); then(tag, true) }
+        } else b.setMessage(getString(R.string.speech_not_offered, name))
+        b.show()
+    }
+
+    /** "Download French?": the phone's speech service fetches it once; Android 14+ shows progress here. */
+    private fun offerSpeechDownload(tag: String, then: (String, Boolean) -> Unit) {
+        val name = SpeechSetup.displayName(tag)
+        MaterialAlertDialogBuilder(this).setTitle(R.string.speech_setup_title).setMessage(getString(R.string.speech_setup_msg, name))
+            .setPositiveButton(R.string.speech_download) { _, _ -> downloadSpeech(tag, then) }
+            .setNegativeButton(R.string.speech_not_now, null).show()
+    }
+
+    private fun downloadSpeech(tag: String, then: (String, Boolean) -> Unit) {
+        val name = SpeechSetup.displayName(tag)
+        val bar = com.google.android.material.progressindicator.LinearProgressIndicator(this).apply {
+            isIndeterminate = true
+            setPadding(Palette.dp(context, 24), Palette.dp(context, 16), Palette.dp(context, 24), Palette.dp(context, 8))
+        }
+        val progress = MaterialAlertDialogBuilder(this).setTitle(getString(R.string.speech_downloading_title, name)).setView(bar)
+            .setNegativeButton(R.string.speech_hide, null).show()
+        fun later(msg: Int) {
+            progress.dismiss()
+            if (isFinishing || isDestroyed) return
+            MaterialAlertDialogBuilder(this).setMessage(getString(msg, name)).setPositiveButton(android.R.string.ok, null)
+                .setNeutralButton(R.string.speech_settings) { _, _ -> SpeechSetup.openSettings(this) }.show()
+        }
+        SpeechSetup.download(this, tag, object : SpeechSetup.Progress {
+            override fun percent(p: Int) { bar.isIndeterminate = false; bar.setProgressCompat(p, true) }
+            override fun done() {
+                val shown = progress.isShowing
+                progress.dismiss()
+                if (isFinishing || isDestroyed) return
+                Toast.makeText(this@EditorActivity, getString(R.string.speech_ready, name), Toast.LENGTH_SHORT).show()
+                if (shown) then(tag, false)       // still waiting here: carry on with what they asked for
+            }
+            override fun scheduled() = later(R.string.speech_download_started)
+            override fun failed(followable: Boolean) = later(if (followable) R.string.speech_download_started else R.string.speech_download_failed)
+        })
     }
 
     private fun explainNoSpeech() {

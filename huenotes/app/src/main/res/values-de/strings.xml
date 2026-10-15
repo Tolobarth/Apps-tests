@@ -299,4 +299,19 @@
     <string name="settings_online_speech">Online-Spracherkennung</string>
     <string name="settings_online_speech_sum">Dieses Telefon kann Sprache nicht selbst erkennen. Wenn an, wird deine Stimme für Diktate und Transkripte an den Sprachdienst des Telefons (meist Google) gesendet.</string>
     <string name="settings_online_speech_sum_ondevice">Nicht nötig: Dieses Telefon erkennt Sprache selbst, deine Stimme bleibt auf dem Telefon.</string>
+
+    <!-- Speech setup: language download on first use (v0.16) -->
+    <string name="speech_setup_title">Spracherkennung</string>
+    <string name="speech_setup_msg">Zum Diktieren und Transkribieren auf %1$s muss der Sprachdienst des Telefons (Google) die Sprache einmal herunterladen. Danach funktioniert es ohne Internet und deine Stimme bleibt auf dem Telefon.</string>
+    <string name="speech_not_now">Nicht jetzt</string>
+    <string name="speech_downloading_title">%1$s wird heruntergeladen…</string>
+    <string name="speech_hide">Ausblenden</string>
+    <string name="speech_ready">Spracherkennung für %1$s ist bereit</string>
+    <string name="speech_download_started">Der Download von %1$s hat begonnen. Android schließt ihn eventuell später ab, zum Beispiel im WLAN. Versuche es in ein paar Minuten noch einmal.</string>
+    <string name="speech_download_failed">Der Sprachdienst des Telefons hat den Download nicht gestartet. Du kannst %1$s selbst in den Spracheinstellungen des Telefons herunterladen (Offline-Spracherkennung oder Sprachen).</string>
+    <string name="speech_settings">Spracheinstellungen</string>
+    <string name="speech_still_downloading">Der Download von %1$s ist noch nicht fertig. Versuche es in ein paar Minuten noch einmal.</string>
+    <string name="speech_not_offered">Der Sprachdienst des Telefons bietet %1$s nicht offline an.</string>
+    <string name="speech_not_offered_online">Der Sprachdienst des Telefons bietet %1$s nicht offline an. Du kannst stattdessen Online-Spracherkennung nutzen: Deine Stimme wird dann an den Sprachdienst (meist Google) gesendet.</string>
+    <string name="speech_use_online">Online nutzen</string>
 </resources>

@@ -299,4 +299,19 @@
     <string name="settings_online_speech">Reconocimiento de voz en línea</string>
     <string name="settings_online_speech_sum">Este teléfono no puede reconocer la voz por sí solo. Si está activado, tu voz se envía al servicio de voz del teléfono (normalmente Google) para dictados y transcripciones.</string>
     <string name="settings_online_speech_sum_ondevice">No hace falta: este teléfono reconoce la voz por sí solo, así que tu voz no sale del teléfono.</string>
+
+    <!-- Speech setup: language download on first use (v0.16) -->
+    <string name="speech_setup_title">Reconocimiento de voz</string>
+    <string name="speech_setup_msg">Para dictar y transcribir en %1$s, el servicio de voz del teléfono (Google) tiene que descargarlo una vez. Después funciona sin internet y tu voz no sale del teléfono.</string>
+    <string name="speech_not_now">Ahora no</string>
+    <string name="speech_downloading_title">Descargando %1$s…</string>
+    <string name="speech_hide">Ocultar</string>
+    <string name="speech_ready">El reconocimiento de voz en %1$s está listo</string>
+    <string name="speech_download_started">La descarga de %1$s ha empezado. Android puede terminarla más tarde, por ejemplo con Wi-Fi. Inténtalo de nuevo en unos minutos.</string>
+    <string name="speech_download_failed">El servicio de voz del teléfono no inició la descarga. Puedes descargar %1$s tú mismo en los ajustes de voz del teléfono (Reconocimiento de voz sin conexión o Idiomas).</string>
+    <string name="speech_settings">Ajustes de voz</string>
+    <string name="speech_still_downloading">La descarga de %1$s aún no ha terminado. Inténtalo en unos minutos.</string>
+    <string name="speech_not_offered">El servicio de voz del teléfono no ofrece %1$s sin conexión.</string>
+    <string name="speech_not_offered_online">El servicio de voz del teléfono no ofrece %1$s sin conexión. Puedes usar el reconocimiento en línea: tu voz se envía entonces al servicio de voz (normalmente Google).</string>
+    <string name="speech_use_online">Usar en línea</string>
 </resources>

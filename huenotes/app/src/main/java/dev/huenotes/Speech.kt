@@ -34,8 +34,9 @@ object Speech {
     /** Feeding a recording to the recogniser needs Android 13. */
     fun canTranscribe(c: Context) = Build.VERSION.SDK_INT >= 33 && canDictate(c)
 
-    fun create(c: Context): SpeechRecognizer =
-        if (onDevice(c)) SpeechRecognizer.createOnDeviceSpeechRecognizer(c) else SpeechRecognizer.createSpeechRecognizer(c)
+    /** [online] picks the phone's regular recogniser (only when the person allowed it); otherwise on-device when available. */
+    fun create(c: Context, online: Boolean = false): SpeechRecognizer =
+        if (!online && onDevice(c)) SpeechRecognizer.createOnDeviceSpeechRecognizer(c) else SpeechRecognizer.createSpeechRecognizer(c)
 
     /**
      * Speech is recognised in the app's language (the in-app choice if any, otherwise the phone's). A bare language such as
@@ -48,9 +49,9 @@ object Speech {
         return if (l.country.isEmpty() && l.language == phone.language && phone.country.isNotEmpty()) phone.toLanguageTag() else chosen
     }
 
-    fun intent(c: Context): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+    fun intent(c: Context, language: String = language(c)): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, language(c))
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
         .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, c.packageName)
@@ -67,12 +68,6 @@ object Speech {
         error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT || error == SpeechRecognizer.ERROR_SERVER -> R.string.speech_err_network
         error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_TOO_MANY_REQUESTS -> R.string.speech_err_busy
         else -> R.string.speech_err_other
-    }
-
-    /** Asks the phone to download speech for the app's language (Android 13+; the system shows its own progress). */
-    fun downloadLanguage(c: Context) {
-        if (Build.VERSION.SDK_INT < 33 || !onDevice(c)) return
-        runCatching { SpeechRecognizer.createOnDeviceSpeechRecognizer(c).apply { triggerModelDownload(intent(c)); destroy() } }
     }
 
     fun best(b: Bundle?): String = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
@@ -110,6 +105,7 @@ class Dictation(
     private val c: Context,
     private val onUpdate: (text: String, hearing: String) -> Unit,
     private val onEnd: (text: String, error: Int?) -> Unit,
+    private val language: String = Speech.language(c),
     private val recognizer: SpeechRecognizer = Speech.create(c),
 ) {
     private val parts = ArrayList<String>()
@@ -136,7 +132,7 @@ class Dictation(
 
     fun start() { recognizer.setRecognitionListener(listener); listen() }
 
-    private fun listen() = recognizer.startListening(Speech.intent(c))
+    private fun listen() = recognizer.startListening(Speech.intent(c, language))
 
     /** Stops listening; what is being said right now is still recognised and kept. */
     fun stop() {
@@ -257,6 +253,7 @@ class Transcriber(
     private val file: File,
     private val onUpdate: (text: String, positionMs: Long) -> Unit,
     private val onEnd: (text: String, error: Int?) -> Unit,
+    private val language: String = Speech.language(c),
     private val recognizer: SpeechRecognizer = Speech.create(c),
 ) {
     private val parts = ArrayList<String>()
@@ -284,7 +281,7 @@ class Transcriber(
     fun start() {
         val (read, write) = ParcelFileDescriptor.createPipe()
         recognizer.setRecognitionListener(listener)
-        recognizer.startListening(Speech.intent(c)
+        recognizer.startListening(Speech.intent(c, language)
             .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, read)
             .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
             .putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)

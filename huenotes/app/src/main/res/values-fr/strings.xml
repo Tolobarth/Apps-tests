@@ -299,4 +299,19 @@
     <string name="settings_online_speech">Reconnaissance vocale en ligne</string>
     <string name="settings_online_speech_sum">Ce téléphone ne sait pas reconnaître la parole seul. Si activé, votre voix est envoyée au service vocal du téléphone (souvent Google) pour la dictée et les transcriptions.</string>
     <string name="settings_online_speech_sum_ondevice">Inutile : ce téléphone reconnaît la parole seul, votre voix reste sur le téléphone.</string>
+
+    <!-- Speech setup: language download on first use (v0.16) -->
+    <string name="speech_setup_title">Reconnaissance vocale</string>
+    <string name="speech_setup_msg">Pour dicter et transcrire en %1$s, le service vocal du téléphone (Google) doit le télécharger une fois. Ensuite, cela fonctionne sans internet et votre voix reste sur le téléphone.</string>
+    <string name="speech_not_now">Plus tard</string>
+    <string name="speech_downloading_title">Téléchargement : %1$s…</string>
+    <string name="speech_hide">Masquer</string>
+    <string name="speech_ready">La reconnaissance vocale en %1$s est prête</string>
+    <string name="speech_download_started">Le téléchargement de %1$s a commencé. Android peut le terminer plus tard, par exemple en Wi-Fi. Réessayez dans quelques minutes.</string>
+    <string name="speech_download_failed">Le service vocal du téléphone n’a pas lancé le téléchargement. Vous pouvez télécharger %1$s vous-même dans les paramètres vocaux du téléphone (Reconnaissance vocale hors connexion ou Langues).</string>
+    <string name="speech_settings">Paramètres vocaux</string>
+    <string name="speech_still_downloading">Le téléchargement de %1$s n’est pas encore terminé. Réessayez dans quelques minutes.</string>
+    <string name="speech_not_offered">Le service vocal du téléphone ne propose pas %1$s hors connexion.</string>
+    <string name="speech_not_offered_online">Le service vocal du téléphone ne propose pas %1$s hors connexion. Vous pouvez utiliser la reconnaissance en ligne : votre voix est alors envoyée au service vocal (souvent Google).</string>
+    <string name="speech_use_online">Utiliser en ligne</string>
 </resources>

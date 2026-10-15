@@ -182,6 +182,10 @@ class SpeechTest {
 
     // ---- editor --------------------------------------------------------------------------------
 
+    /** The phone's speech service answers the first-use check: the app's language is installed. */
+    private fun speechInstalled() = latest().triggerSupportResult(android.speech.RecognitionSupport.Builder()
+        .setInstalledOnDeviceLanguages(listOf(Speech.language(app))).build())
+
     @Test fun editorDictatesIntoTheTextAtTheCursor() {
         app.deleteDatabase("huenotes.db"); Lock.clear(app)
         shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
@@ -190,6 +194,7 @@ class SpeechTest {
         val body = c.get().findViewById<EditText>(R.id.bodyEdit)
         body.requestFocus(); body.setSelection(body.text.length)
         c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
+        speechInstalled()
         latest().triggerOnResults(results("milk and eggs")); ShadowLooper.idleMainLooper()
         (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).performClick()
         latest().triggerOnResults(results("")); ShadowLooper.idleMainLooper()
@@ -204,6 +209,7 @@ class SpeechTest {
         val id = NoteStore(app).save(Note(title = "T", body = "Keep"))
         val c = Robolectric.buildActivity(EditorActivity::class.java, Intent(app, EditorActivity::class.java).putExtra("id", id)).setup()
         c.get().findViewById<android.view.View>(R.id.dictateButton).performClick()
+        speechInstalled()
         latest().triggerOnResults(results("oops")); ShadowLooper.idleMainLooper()
         (ShadowDialog.getLatestDialog() as AlertDialog).getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
         ShadowLooper.idleMainLooper()

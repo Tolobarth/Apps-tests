@@ -299,4 +299,19 @@
     <string name="settings_online_speech">Online speech recognition</string>
     <string name="settings_online_speech_sum">This phone can’t recognise speech by itself. When on, your voice is sent to the phone’s speech service (usually Google) for dictation and transcripts.</string>
     <string name="settings_online_speech_sum_ondevice">Not needed: this phone recognises speech by itself, so your voice stays on the phone.</string>
+
+    <!-- Speech setup: language download on first use (v0.16) -->
+    <string name="speech_setup_title">Speech recognition</string>
+    <string name="speech_setup_msg">To dictate and transcribe in %1$s, the phone’s speech service (Google) needs to download it once. After that it works without internet and your voice stays on the phone.</string>
+    <string name="speech_not_now">Not now</string>
+    <string name="speech_downloading_title">Downloading %1$s…</string>
+    <string name="speech_hide">Hide</string>
+    <string name="speech_ready">%1$s speech is ready</string>
+    <string name="speech_download_started">The download of %1$s has started. Android may finish it later, for example on Wi-Fi. Try again in a few minutes.</string>
+    <string name="speech_download_failed">The phone’s speech service didn’t start the download. You can download %1$s yourself in the phone’s speech settings (Offline speech recognition or Languages).</string>
+    <string name="speech_settings">Speech settings</string>
+    <string name="speech_still_downloading">The %1$s download isn’t finished yet. Try again in a few minutes.</string>
+    <string name="speech_not_offered">The phone’s speech service has no offline speech for %1$s.</string>
+    <string name="speech_not_offered_online">The phone’s speech service has no offline speech for %1$s. You can use online recognition instead: your voice is then sent to the speech service (usually Google).</string>
+    <string name="speech_use_online">Use online</string>
 </resources>
